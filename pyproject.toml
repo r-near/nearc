@@ -1,0 +1,20 @@
+[project]
+name = "near-py-tool"
+version = "0.1.11"
+description = "Python NEAR contract build/deploy tool"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = ["toml", "packaging", "randomname", "click", "rich_click", "questionary"]
+
+[project.scripts]
+near-py-tool = "near_py_tool.cli:cli"
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["near_py_tool", "near_py_tool.commands"]
+
+[tool.setuptools.data-files]
+"" = ["assets/*"]

@@ -1,0 +1,3 @@
+[submodule "near_py_tool/assets/micropython"]
+	path = near_py_tool/assets/micropython
+	url = https://github.com/past-hypothesis/micropython.git

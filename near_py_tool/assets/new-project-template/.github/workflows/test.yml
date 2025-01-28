@@ -1,0 +1,19 @@
+name: Test
+on:
+  workflow_call:
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: apt install -y make emscripten python3-venv python3-pip python-is-python3
+      - name: Install near-py-tool
+        run: pip install --break-system-packages near-py-tool
+      - name: Install near CLI
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/near-cli-rs/releases/download/v0.11.1/near-cli-rs-installer.sh | sh
+      - name: Run near-py-tool test
+        run: near-py-tool test
