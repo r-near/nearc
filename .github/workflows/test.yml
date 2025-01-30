@@ -1,0 +1,27 @@
+name: Test
+on:
+  workflow_call:
+
+jobs:
+  tests:
+    name: Basic functional test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: apt install -y make emscripten python3-venv python3-pip python-is-python3
+      - name: Install near CLI
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/near-cli-rs/releases/download/v0.11.1/near-cli-rs-installer.sh | sh
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Sync the project
+        run: uv sync
+      - name: Create a new contract project
+        run: uv run near-py-tool new test-project
+      - name: Build the example contract
+        run: uv run near-py-tool build non-reproducible-wasm --project-dir=test-project
+      - name: Create a testnet dev account with random id
+        run: uv run near-py-tool create-dev-account use-random-account-id autogenerate-new-keypair save-to-legacy-keychain network-config testnet create
+      - name: Deploy the example contract to testnet
+        run: uv run near-py-tool deploy build-non-reproducible-wasm --project-dir=test-project '*' with-init-call echo json-args '{"input":"ci-test"}' prepaid-gas 30000000000000 attached-deposit 0 network-config testnet sign-with-legacy-keychain send

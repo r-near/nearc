@@ -1,0 +1,24 @@
+name: Publish Python packages
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  publish:
+    name: Deploy to production
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: apt install -y make emscripten python3-venv python3-pip python-is-python3
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Build packages
+        run: uv build
+      - name: Publish the packages
+        run: uv deploy
