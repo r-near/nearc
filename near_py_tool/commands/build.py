@@ -113,8 +113,8 @@ def get_venv_package_paths(file_path, venv_path):
 
     return package_paths
 
-def install_pyproject_dependencies(pyproject_path, venv_path):
-    with open(pyproject_path, "r") as file:
+def install_pyproject_dependencies(project_path, venv_path):
+    with open(project_path / "pyproject.toml", "r") as file:
         pyproject_data = toml.load(file)
     for package in pyproject_data.get("project", {}).get("dependencies", {}):
         click.echo(f"Installing {package} into {venv_path}...")
@@ -124,7 +124,7 @@ def install_pyproject_dependencies(pyproject_path, venv_path):
             if not pip_path.is_file():
                 click.echo(click.style(f"Error: build Python venv doesn't have pip installed", fg='bright_red'))
                 sys.exit()
-        run_command([pip_path, "install", package, "--disable-pip-version-check"])
+        run_command([pip_path, "install", package, "--disable-pip-version-check"], cwd=project_path)
 
 def do_build(project_dir, rebuild_all):
     project_path = Path(project_dir).resolve()
@@ -172,13 +172,13 @@ You can install Emscripten via a package manager or by doing the following:
     # https://emscripten.org/docs/getting_started/downloads.html
 
     # click.echo(f"Running `uv sync` in {project_path}...")
-    # run_command(['uv', "sync", "--directory", project_path])
+    # run_command(['uv', "sync"], cwd=project_path)
 
     if not venv_path.is_dir():
         click.echo(f"Creating a venv in {venv_path}...")
-        run_command(['python' if is_command_available('python') else 'python3', "-m", "venv", venv_path])
+        run_command(['python' if is_command_available('python') else 'python3', "-m", "venv", venv_path], cwd=project_path)
       
-    install_pyproject_dependencies(project_path / "pyproject.toml", venv_path)
+    install_pyproject_dependencies(project_path, venv_path)
 
     package_paths = get_venv_package_paths(contract_path, venv_path)
 
@@ -199,7 +199,8 @@ You can install Emscripten via a package manager or by doing the following:
     contract_wasm_path = build_path / Path(project_name).with_suffix(".wasm")
     
     run_command(['make', "-C", mpy_cross_path,
-                 f"BUILD={mpy_cross_build_path}"])
+                 f"BUILD={mpy_cross_build_path}"],
+                cwd=project_path)
 
     run_command(['make', "-C", mpy_port_path,
                  f"BUILD={build_path}",
@@ -208,7 +209,8 @@ You can install Emscripten via a package manager or by doing the following:
                  f"FROZEN_MANIFEST={build_path / 'manifest.py'}",
                  f"SRC_C_GENERATED={build_path / 'export_wrappers.c'}",
                  f"EXPORTED_FUNCTIONS={','.join(['_' + e for e in exports])}",
-                 f"OUTPUT_WASM={contract_wasm_path}"])
+                 f"OUTPUT_WASM={contract_wasm_path}"],
+                cwd=project_path)
              
     click.echo(f"Contract WASM file was build successfully and is located at {contract_wasm_path}")
 
@@ -219,7 +221,7 @@ def build(ctx):
     click_utils.subcommand_choice(ctx)
 
 @build.command(cls=RichCommand)
-@click.argument('project-dir', default='.')
+@click.option('--project-dir', default='.')
 @click.option('--rebuild-all', is_flag=True, help="Rebuild everything from scratch")
 @click.pass_context
 def non_reproducible_wasm(ctx, project_dir, rebuild_all):
@@ -227,7 +229,7 @@ def non_reproducible_wasm(ctx, project_dir, rebuild_all):
     do_build(project_dir, rebuild_all)
 
 @build.command(cls=RichCommand)
-@click.argument('project-dir', default='.')
+@click.option('--project-dir', default='.')
 @click.pass_context
 def reproducible_wasm(ctx, project_dir):
     """Requires `[reproducible_build]` section in pyproject.toml, and all changes committed to git (recommended for the production release)"""
