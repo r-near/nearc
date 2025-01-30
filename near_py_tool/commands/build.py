@@ -123,7 +123,7 @@ def install_pyproject_dependencies(project_path, venv_path):
             pip_path = venv_path / "Scripts" / "pip.exe"
             if not pip_path.is_file():
                 click.echo(click.style(f"Error: build Python venv doesn't have pip installed", fg='bright_red'))
-                sys.exit()
+                sys.exit(1)
         run_command([pip_path, "install", package, "--disable-pip-version-check"], cwd=project_path)
 
 def do_build(project_dir, rebuild_all):
@@ -138,7 +138,7 @@ def do_build(project_dir, rebuild_all):
     contract_path = project_path / "contract.py"
     if not contract_path.is_file():
         click.echo(click.style(f"Error: contract file {contract_path} doesn't exist", fg='bright_red'))
-        sys.exit()
+        sys.exit(1)
         
     if not is_command_available('emcc'):
         click.echo(click.style("Error: Emscripten C to WASM compiler is required for building Python NEAR contracts", fg='bright_red'))
@@ -152,12 +152,12 @@ You can install Emscripten via a package manager or by doing the following:
   source ./emsdk_env.sh
                                
 """)
-        sys.exit()
+        sys.exit(1)
 
     if not is_command_available('make'):
         click.echo(click.style("Error: make is required for building Python NEAR contracts", fg='bright_red'))
         click.echo("Please install make via a package manager before continuing")
-        sys.exit()
+        sys.exit(1)
     
     if rebuild_all:
         click.echo(f"Removing build directory {build_path} to perform a clean build")
