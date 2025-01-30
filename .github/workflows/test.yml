@@ -9,6 +9,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Install dependencies
         run: sudo apt install -y make emscripten python3-venv python3-pip python-is-python3
       - name: Install near CLI
