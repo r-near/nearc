@@ -14,7 +14,7 @@ jobs:
       - name: Install dependencies
         run: sudo apt install -y make emscripten python3-venv python3-pip python-is-python3
       - name: Install near CLI
-        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/near-cli-rs/releases/download/v0.11.1/near-cli-rs-installer.sh | sh
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/near-cli-rs/releases/download/v0.18.0/near-cli-rs-installer.sh | sh
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Sync the project

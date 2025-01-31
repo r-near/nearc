@@ -1,14 +1,14 @@
 name: Publish Python packages
 on:
-  push:
-    branches: [main]
+  release:
+    types: [published]
 
 jobs:
   test:
     uses: ./.github/workflows/test.yml
 
   publish:
-    name: Deploy to production
+    name: Publish to PyPI
     needs: [test]
     runs-on: ubuntu-latest
     steps:
