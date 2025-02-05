@@ -75,11 +75,12 @@ near_module_name = 'near'
 def is_external_package(name):
     return not is_mpy_module(name) and not is_mpy_lib_package(name) and name not in mpy_stdlib_packages and name != near_module_name
 
-def generate_manifest(contract_path, package_paths, manifest_path):
+def generate_manifest(contract_path, package_paths, manifest_path, excluded_stdlib_packages):
     with open(manifest_path, "w") as o:
         o.write("# THIS FILE IS GENERATED, DO NOT EDIT\n\n")
         for module in mpy_stdlib_packages:
-            o.write(f'require("{module}")\n')
+            if module not in excluded_stdlib_packages:
+                o.write(f'require("{module}")\n')
         for mod in ["typing", "typing_extensions"]:
             o.write(f'module("{mod}.py", base_path="$(PORT_DIR)/extra/typing")\n')
         for module, path in package_paths.items():
@@ -110,8 +111,12 @@ def get_venv_package_paths(file_path, venv_path):
               click.echo(f"Warning: module {module_name} has multiple candidate paths: {paths}")
           for path in paths:
               package_paths[module_name] = path
-
     return package_paths
+  
+def get_excluded_stdlib_packages(project_path):
+    with open(project_path / "pyproject.toml", "r") as file:
+        pyproject_data = toml.load(file)
+    return pyproject_data.get("tool", {}).get("near-py-tool", {}).get("exclude-micropython-stdlib-packages", [])
 
 def install_pyproject_dependencies(project_path, venv_path):
     with open(project_path / "pyproject.toml", "r") as file:
@@ -168,9 +173,6 @@ You can install Emscripten via a package manager or by doing the following:
 
     build_path.mkdir(parents=True, exist_ok=True)
 
-    # todo: check for uv and emcc presence and offer installation if missing 
-    # https://emscripten.org/docs/getting_started/downloads.html
-
     # click.echo(f"Running `uv sync` in {project_path}...")
     # run_command(['uv', "sync"], cwd=project_path)
 
@@ -188,8 +190,12 @@ You can install Emscripten via a package manager or by doing the following:
 
     exports = list(get_near_exports_from_file(contract_path))
     click.echo(f"The contract WASM will export the following methods: {exports}")
-
-    generate_manifest(contract_path, package_paths, build_path / "manifest.py")
+    
+    excluded_stdlib_packages = get_excluded_stdlib_packages(project_path)
+    print(f"Excluding the following MicroPython stdlib packages from the build: {excluded_stdlib_packages}")
+    print(f"(this list can be adjusted via [tool.near-py-tool] exclude-micropython-stdlib-packages setting in pyproject.toml)")
+    
+    generate_manifest(contract_path, package_paths, build_path / "manifest.py", excluded_stdlib_packages)
     generate_export_wrappers(contract_path, exports, build_path / "export_wrappers.c")
     try:
         os.unlink(build_path / 'frozen_content.c')  # force frozen content rebuilt every time
