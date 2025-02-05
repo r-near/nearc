@@ -86,8 +86,8 @@ def generate_manifest(contract_path, package_paths, manifest_path):
             if is_mpy_lib_package(module):
                 o.write(f'require("{module}")\n')
             elif not is_mpy_module(module):
-                o.write(f'package("{module}", base_path="{path.parent}")\n')
-        o.write(f'module("{contract_path.name}", base_path="{contract_path.parent}")\n')
+                o.write(f'package("{module}", base_path="{path.parent.relative_to(manifest_path.parent)}")\n')
+        o.write(f'module("{contract_path.name}", base_path="..")\n')
 
 def generate_export_wrappers(contract_path, exports, export_wrappers_path):
     with open(export_wrappers_path, "w") as o:
