@@ -5,7 +5,7 @@ import near_py_tool.click_utils as click_utils
 from near_py_tool.run_command import run_command, is_command_available
 
 def is_account_id_available(account_id, network):
-    return run_command(['near', 'account', 'view-account-summary', account_id, 'network-config', network, 'now'], fail_on_nonzero_exit_code=False) != 0
+    return run_command(['near', 'account', 'view-account-summary', account_id, 'network-config', network, 'now'], check=False) != 0
 
 def create_account(ctx, extra_args):
     if not is_command_available('near'):

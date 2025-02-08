@@ -1,6 +1,8 @@
 import click
 import questionary
 
+default_choice_style = questionary.Style([('qmark', 'fg:cyan bold'), ('selected', 'fg:cyan bold'), ('pointer', 'fg:yellow bold')])
+
 def subcommand_choice(ctx):
     if ctx.invoked_subcommand is None:
         command = ctx.command
@@ -16,11 +18,7 @@ def subcommand_choice(ctx):
                     value=cmd
                 ) for cmd in subcommands
             ],
-            style=questionary.Style([
-                ('qmark', 'fg:cyan bold'),
-                ('selected', 'fg:cyan bold'),
-                ('pointer', 'fg:yellow bold'),
-            ]),
+            style=default_choice_style,
             use_arrow_keys=True
         ).ask() if len(subcommands) > 1 else subcommands[0]
         if subcommand:
@@ -30,13 +28,11 @@ def choice(prompt, values):
     return questionary.select(
         prompt,
         choices=[questionary.Choice(v, value=v) for v in values],
-        style=questionary.Style([
-            ('qmark', 'fg:cyan bold'),
-            ('selected', 'fg:cyan bold'),
-            ('pointer', 'fg:yellow bold'),
-        ]),
+        style=default_choice_style,
         use_arrow_keys=True).ask()
   
+def path(prompt, values):
+    return questionary.path(prompt, style=default_choice_style).ask()  
 
 def all_parent_command_params(ctx):
     cmd_params = {}

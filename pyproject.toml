@@ -1,9 +1,9 @@
 [project]
 name = "near-py-tool"
-version = "0.1.16"
+version = "0.1.17"
 description = "Python NEAR contract build/deploy tool"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = ["toml", "packaging", "randomname", "click", "rich_click", "questionary"]
 
 [project.scripts]

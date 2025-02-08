@@ -8,7 +8,7 @@ import toml
 import click
 from rich_click import RichGroup, RichCommand
 import near_py_tool.click_utils as click_utils
-from near_py_tool.run_command import run_command, is_command_available
+from near_py_tool.run_command import run_command, run_build_command, is_command_available, check_dependencies
 
 def get_near_exports_from_file(file_path):
     with open(file_path, "r") as file:
@@ -87,7 +87,7 @@ def generate_manifest(contract_path, package_paths, manifest_path, excluded_stdl
             if is_mpy_lib_package(module):
                 o.write(f'require("{module}")\n')
             elif not is_mpy_module(module):
-                o.write(f'package("{module}", base_path="{path.parent.relative_to(manifest_path.parent)}")\n')
+                o.write(f'package("{module}", base_path="{str(path.parent.relative_to(manifest_path.parent)).replace('\\', '/')}")\n')
         o.write(f'module("{contract_path.name}", base_path="..")\n')
 
 def generate_export_wrappers(contract_path, exports, export_wrappers_path):
@@ -123,12 +123,13 @@ def install_pyproject_dependencies(project_path, venv_path):
         pyproject_data = toml.load(file)
     for package in pyproject_data.get("project", {}).get("dependencies", {}):
         click.echo(f"Installing {package} into {venv_path}...")
-        pip_path = venv_path / "bin" / "pip"
-        if not pip_path.is_file():
-            pip_path = venv_path / "Scripts" / "pip.exe"
-            if not pip_path.is_file():
-                click.echo(click.style(f"Error: build Python venv doesn't have pip installed", fg='bright_red'))
-                sys.exit(1)
+        pip_path = None
+        for path in [venv_path / "bin" / "pip", venv_path / "bin" / "pip.exe", venv_path / "Scripts" / "pip.exe"]:
+            if path.is_file():
+                pip_path = path
+        if pip_path is None:
+            click.echo(click.style(f"Error: build Python venv doesn't have pip installed", fg='bright_red'))
+            sys.exit(1)
         run_command([pip_path, "install", package, "--disable-pip-version-check"], cwd=project_path)
 
 def do_build(project_dir, rebuild_all):
@@ -144,25 +145,8 @@ def do_build(project_dir, rebuild_all):
     if not contract_path.is_file():
         click.echo(click.style(f"Error: contract file {contract_path} doesn't exist", fg='bright_red'))
         sys.exit(1)
-        
-    if not is_command_available('emcc'):
-        click.echo(click.style("Error: Emscripten C to WASM compiler is required for building Python NEAR contracts", fg='bright_red'))
-        click.echo("""
-You can install Emscripten via a package manager or by doing the following:
 
-  git clone https://github.com/emscripten-core/emsdk.git
-  cd emsdk
-  ./emsdk install latest
-  ./emsdk activate latest
-  source ./emsdk_env.sh
-                               
-""")
-        sys.exit(1)
-
-    if not is_command_available('make'):
-        click.echo(click.style("Error: make is required for building Python NEAR contracts", fg='bright_red'))
-        click.echo("Please install make via a package manager before continuing")
-        sys.exit(1)
+    check_dependencies(build_path)        
     
     if rebuild_all:
         click.echo(f"Removing build directory {build_path} to perform a clean build")
@@ -174,7 +158,7 @@ You can install Emscripten via a package manager or by doing the following:
     build_path.mkdir(parents=True, exist_ok=True)
 
     # click.echo(f"Running `uv sync` in {project_path}...")
-    # run_command(['uv', "sync"], cwd=project_path)
+    # run_build_command(build_path, ['uv', "sync"], cwd=project_path)
 
     if not venv_path.is_dir():
         click.echo(f"Creating a venv in {venv_path}...")
@@ -202,21 +186,18 @@ You can install Emscripten via a package manager or by doing the following:
     except Exception:
         pass
 
-    contract_wasm_path = build_path / Path(project_name).with_suffix(".wasm")
-    
-    run_command(['make', "-C", mpy_cross_path,
-                 f"BUILD={mpy_cross_build_path}"],
-                cwd=project_path)
-
-    run_command(['make', "-C", mpy_port_path,
-                 f"BUILD={build_path}",
-                 f"MICROPY_MPYCROSS={mpy_cross_build_path}/mpy-cross",
-                 f"MICROPY_MPYCROSS_DEPENDENCY={mpy_cross_build_path}/mpy-cross",
-                 f"FROZEN_MANIFEST={build_path / 'manifest.py'}",
-                 f"SRC_C_GENERATED={build_path / 'export_wrappers.c'}",
-                 f"EXPORTED_FUNCTIONS={','.join(['_' + e for e in exports])}",
-                 f"OUTPUT_WASM={contract_wasm_path}"],
-                cwd=project_path)
+    contract_wasm_path = build_path / Path(project_name).with_suffix(".wasm")    
+    run_build_command(build_path, ['make', "-C", mpy_cross_path, f"BUILD={mpy_cross_build_path}"], cwd=project_path)    
+    run_build_command(build_path, 
+                      ['make', "-C", mpy_port_path,
+                       f"BUILD={build_path}",
+                       f"MICROPY_MPYCROSS={mpy_cross_build_path}/mpy-cross",
+                       f"MICROPY_MPYCROSS_DEPENDENCY={mpy_cross_build_path}/mpy-cross",
+                       f"FROZEN_MANIFEST={build_path / 'manifest.py'}",
+                       f"SRC_C_GENERATED={build_path / 'export_wrappers.c'}",
+                       f"EXPORTED_FUNCTIONS={','.join(['_' + e for e in exports])}",
+                       f"OUTPUT_WASM={contract_wasm_path}"],
+                      cwd=project_path)
              
     click.echo(f"Contract WASM file was build successfully and is located at {contract_wasm_path}")
 
