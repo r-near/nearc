@@ -18,8 +18,9 @@ def is_msys2_installed(msys2_path):
 def msys2_run_command(msys2_path, cmd, cwd='.', check=True):
     emscripten_path = '/emsdk/upstream/emscripten'
     str_cmd = ' '.join([str(c).replace('\\', '/') for c in cmd])
+    str_cwd = str(cwd).replace('\\', '/')
     cmds = [msys2_path / 'usr' / 'bin' / 'bash.exe', '-l', '-c', 
-            f"(export PATH=/ucrt64/bin:{emscripten_path}:$PATH;export MSYSTEM=UCRT64;cd {str(cwd).replace('\\', '/')};{str_cmd})"]
+            f"(export PATH=/ucrt64/bin:{emscripten_path}:$PATH;export MSYSTEM=UCRT64;cd {str_cwd};{str_cmd})"]
     click.echo(f"Running in {cwd}: {cmds}")
     exit_code = subprocess.run(cmds, cwd=cwd).returncode
     if exit_code != 0 and check:
