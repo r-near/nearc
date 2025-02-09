@@ -147,8 +147,6 @@ def do_build(project_dir, rebuild_all):
         click.echo(click.style(f"Error: contract file {contract_path} doesn't exist", fg='bright_red'))
         sys.exit(1)
 
-    check_dependencies(build_path)        
-    
     if rebuild_all:
         click.echo(f"Removing build directory {build_path} to perform a clean build")
         try:
@@ -158,6 +156,8 @@ def do_build(project_dir, rebuild_all):
 
     build_path.mkdir(parents=True, exist_ok=True)
 
+    check_dependencies(build_path)        
+    
     # click.echo(f"Running `uv sync` in {project_path}...")
     # run_build_command(build_path, ['uv', "sync"], cwd=project_path)
 

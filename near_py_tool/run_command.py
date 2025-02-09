@@ -117,4 +117,14 @@ def run_command(cmd, check=True, cwd=None):
 
 def run_build_command(build_path, cmd, check=True, cwd=None):
     """Runs a commmand in the build environment, which can be the host or msys2 depending on the host OS"""
-    return msys2_run_command(get_msys2_path(build_path), cmd, cwd=cwd, check=check) if is_platform_native_windows() else run_command(cmd, cwd=cwd, check=check)
+    if is_platform_native_windows():
+        return msys2_run_command(get_msys2_path(build_path), cmd, cwd=cwd, check=check)
+    else:
+        env = os.environ.copy()
+        env["PATH"] = f"{get_emsdk_path(build_path) / 'upstream' / 'emscripten'}:{env['PATH']}"
+        str_cmd = [str(c) for c in cmd]
+        exit_code = subprocess.run(str_cmd, cwd=cwd, env=env).returncode
+        if exit_code != 0 and check:
+            click.echo(click.style(f"Error: command `{' '.join(str_cmd)}` returned {exit_code}", fg='bright_red'))
+            sys.exit(1)
+        return exit_code
