@@ -22,7 +22,7 @@ Dependencies
 Platform support
 ----------------
 
-Currenly Linux (including WSL) and MacOS are supported with more platforms planned for the future.
+Currenly Linux, MacOS and Windows (native/MSYS2/WSL) platforms are supported/
 
 
 Python library support
@@ -33,13 +33,18 @@ Most of the MicroPython standard library is included and should be functional wh
 External Python package are supported as long as they don't require native compiled code to work. `near-py-tool` will download any packages referenced
 via `pyproject.toml` and will try to compile them into the WASM binary alongside the main `contract.py` file.
 
+Unneeded modules from the MicroPython stdlib can be excluded from the build by adding the following section to `pyproject.toml`:
+    [tool.near-py-tool]
+    exclude-micropython-stdlib-packages = [...]
+
+
 
 NEAR ABI support
 ----------------
 
-Currenly a minimal version of NEAR WASM ABI is implemented via `near` module:
+Everything from https://github.com/near/near-sdk-rs/blob/master/near-sys/src/lib.rs should be available via `near` module, for example:
 
-- `near.input(index)` retrieves the specified contract input as `bytes`
+- `near.input()` retrieves contract input as `bytes`
 - `near.value_return(value)` returns a value (`str` or `bytes`) from the contract
 - `near.log_utf8(message)` logs a message (`str`)
 
@@ -62,7 +67,6 @@ Getting started
 TODO
 ----
 
-- Proper Python exception support (currently any thrown exception will log the exception message and terminate the contract execution)
-- Tests and CI
 - NEAR ABI metadata generation
-- More platform support & automatic dependency installation
+- more tests
+- porting of a few popular/useful contracts from Rust to Python
