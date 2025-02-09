@@ -65,15 +65,15 @@ def install_emscripten(build_path):
     if not (emsdk_path / '.git').is_dir():
         run_build_command(build_path, ['git', 'clone', 'https://github.com/emscripten-core/emsdk.git'], cwd=emsdk_path.parent)
     run_build_command(build_path, ['git', 'pull'], cwd=emsdk_path)
-    run_build_command(build_path, ['./emsdk', 'install', '4.0.0'], cwd=emsdk_path)
-    run_build_command(build_path, ['./emsdk', 'activate', '4.0.0'], cwd=emsdk_path)
+    run_build_command(build_path, [emsdk_path / 'emsdk', 'install', '4.0.0'], cwd=emsdk_path)
+    run_build_command(build_path, [emsdk_path / 'emsdk', 'activate', '4.0.0'], cwd=emsdk_path)
     
 def check_dependencies(build_path):
     msys2_path = get_msys2_path(build_path)
     if is_platform_native_windows() and not is_msys2_installed(msys2_path):
         install_msys2(msys2_path, build_path)
         install_emscripten(build_path)
-    if not is_command_available('emcc'):
+    if not is_build_command_available(build_path, 'emcc'):
         click.echo(click.style("Error: Emscripten C to WASM compiler is required for building Python NEAR contracts", fg='bright_red'))
         click.echo("""
 You can install Emscripten via a package manager or by doing the following:
@@ -94,17 +94,22 @@ You can install Emscripten via a package manager or by doing the following:
         else:
           sys.exit(0)
     if not is_platform_native_windows(): # don't check on native windows since we install our own msys2 there with all required packages
-        if not is_command_available('make'):
+        if not is_build_command_available(build_path, 'make'):
             click.echo(click.style("Error: make is required for building Python NEAR contracts", fg='bright_red'))
             click.echo("Please install make via a package manager before continuing")
             sys.exit(1)
-        if not is_command_available('cc'):
+        if not is_build_command_available(build_path, 'cc'):
             click.echo(click.style("Error: cc is required for building Python NEAR contracts", fg='bright_red'))
             click.echo("Please install a C compiler via a package manager before continuing")
             sys.exit(1)
 
 def is_command_available(command_name):
     return shutil.which(command_name) is not None
+
+def is_build_command_available(build_path, command_name):
+    env = os.environ.copy()
+    path = f"{get_emsdk_path(build_path) / 'upstream' / 'emscripten'}:{env['PATH']}"
+    return shutil.which(command_name, path=path) is not None
 
 def run_command(cmd, check=True, cwd=None):
     """Runs a commmand in the host environment"""

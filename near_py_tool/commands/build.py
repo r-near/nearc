@@ -8,7 +8,7 @@ import toml
 import click
 from rich_click import RichGroup, RichCommand
 import near_py_tool.click_utils as click_utils
-from near_py_tool.run_command import run_command, run_build_command, is_command_available, check_dependencies
+from near_py_tool.run_command import run_command, run_build_command, is_command_available, is_build_command_available, check_dependencies
 
 def get_near_exports_from_file(file_path):
     with open(file_path, "r") as file:
