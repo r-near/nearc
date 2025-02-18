@@ -1,35 +1,14 @@
 import randomname
 import click
-from rich_click import RichGroup, RichCommand
+from rich_click import RichGroup
 import near_py_tool.click_utils as click_utils
-from near_py_tool.run_command import run_command, is_command_available
-
-def is_account_id_available(account_id, network):
-    return run_command(['near', 'account', 'view-account-summary', account_id, 'network-config', network, 'now'], check=False) != 0
+from near_py_tool.run_command import run_command, check_deploy_dependencies
 
 def create_account(ctx, extra_args):
-    if not is_command_available('near'):
-        click.echo(click.style("Error: NEAR CLI is required to be installed to create a new dev account", fg='bright_red'))
-        click.echo("""
-You can install NEAR CLI by running one of the following commands:
-
-  curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/near-cli-rs/releases/download/v0.18.0/near-cli-rs-installer.sh | sh
-  
-or 
-  
-  powershell -ExecutionPolicy ByPass -c "irm https://github.com/near/near-cli-rs/releases/download/v0.18.0/near-cli-rs-installer.ps1 | iex"
-  
-or 
-  
-  npm install near-cli-rs@0.18.0
-  
-or downloading the binaries from https://github.com/near/near-cli-rs/releases/
-""")
+    check_deploy_dependencies()
     params = click_utils.all_parent_command_params(ctx)
     account_id = (params.get('use-random-account-id') or params.get('use-specific-account-id')).get('new_account_id')
-    cmdline = ['near', 'account', 'create-account', 'sponsor-by-faucet-service', account_id]
-    cmdline.extend([str(arg) for arg in extra_args])
-    run_command(cmdline)
+    api.create_account(account_id, extra_args)
     
 @click.group(cls=RichGroup, invoke_without_command=True)
 @click.pass_context
@@ -43,7 +22,7 @@ def create_dev_account(ctx):
 def use_random_account_id(ctx, extra_args):
     """I would like to create a random account (useful for quick start development)"""
     new_account_id = f"{randomname.get_name()}.testnet"
-    # while not is_account_id_available(new_account_id, 'testnet'):
+    # while not api.is_account_id_available(new_account_id, 'testnet'):
     #   new_account_id = f"{randomname.get_name()}.testnet"
     click.echo(f"Generated account name: {new_account_id}")
     ctx.params['new_account_id'] = new_account_id

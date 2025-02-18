@@ -4,7 +4,6 @@ import platform
 import urllib.request
 import subprocess
 import shutil
-import questionary
 import click
 
 from near_py_tool import click_utils
@@ -68,7 +67,7 @@ def install_emscripten(build_path):
     run_build_command(build_path, [emsdk_path / 'emsdk', 'install', '4.0.0'], cwd=emsdk_path)
     run_build_command(build_path, [emsdk_path / 'emsdk', 'activate', '4.0.0'], cwd=emsdk_path)
     
-def check_dependencies(build_path):
+def check_build_dependencies(build_path):
     msys2_path = get_msys2_path(build_path)
     if is_platform_native_windows() and not is_msys2_installed(msys2_path):
         install_msys2(msys2_path, build_path)
@@ -102,6 +101,25 @@ You can install Emscripten via a package manager or by doing the following:
             click.echo(click.style("Error: cc is required for building Python NEAR contracts", fg='bright_red'))
             click.echo("Please install a C compiler via a package manager before continuing")
             sys.exit(1)
+            
+def check_deploy_dependencies():
+    if not is_command_available('near'):
+        click.echo(click.style("Error: NEAR CLI is required to be installed to deploy a contract", fg='bright_red'))
+        click.echo("""
+You can install NEAR CLI by running one of the following commands:
+
+  curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/near-cli-rs/releases/download/v0.18.0/near-cli-rs-installer.sh | sh
+  
+or 
+  
+  powershell -ExecutionPolicy ByPass -c "irm https://github.com/near/near-cli-rs/releases/download/v0.18.0/near-cli-rs-installer.ps1 | iex"
+  
+or 
+  
+  npm install near-cli-rs@0.18.0
+  
+or downloading the binaries from https://github.com/near/near-cli-rs/releases/
+""")
 
 def is_command_available(command_name):
     return shutil.which(command_name) is not None
@@ -111,14 +129,17 @@ def is_build_command_available(build_path, command_name):
     path = f"{get_emsdk_path(build_path) / 'upstream' / 'emscripten'}:{env['PATH']}"
     return shutil.which(command_name, path=path) is not None
 
-def run_command(cmd, check=True, cwd=None):
+def run_command(cmd, check=True, cwd=None, capture_output=False):
     """Runs a commmand in the host environment"""
     str_cmd = [str(c) for c in cmd]
-    exit_code = subprocess.run(str_cmd, cwd=cwd).returncode
-    if exit_code != 0 and check:
-        click.echo(click.style(f"Error: command `{' '.join(str_cmd)}` returned {exit_code}", fg='bright_red'))
+    result = subprocess.run(str_cmd, cwd=cwd, capture_output=capture_output, text=capture_output)
+    if result.returncode != 0 and check:
+        if capture_output:
+            click.echo(result.stdout)
+            click.echo(result.stderr)
+        click.echo(click.style(f"Error: command `{' '.join(str_cmd)}` returned {result.returncode}", fg='bright_red'))
         sys.exit(1)
-    return exit_code
+    return result.returncode, result.stdout, result.stderr
 
 def run_build_command(build_path, cmd, check=True, cwd=None):
     """Runs a commmand in the build environment, which can be the host or msys2 depending on the host OS"""
@@ -128,8 +149,8 @@ def run_build_command(build_path, cmd, check=True, cwd=None):
         env = os.environ.copy()
         env["PATH"] = f"{get_emsdk_path(build_path) / 'upstream' / 'emscripten'}:{env['PATH']}"
         str_cmd = [str(c) for c in cmd]
-        exit_code = subprocess.run(str_cmd, cwd=cwd, env=env).returncode
-        if exit_code != 0 and check:
-            click.echo(click.style(f"Error: command `{' '.join(str_cmd)}` returned {exit_code}", fg='bright_red'))
+        result = subprocess.run(str_cmd, cwd=cwd, env=env)
+        if result.returncode != 0 and check:
+            click.echo(click.style(f"Error: command `{' '.join(str_cmd)}` returned {result.returncode}", fg='bright_red'))
             sys.exit(1)
-        return exit_code
+        return result.returncode, result.stdout, result.stderr

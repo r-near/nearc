@@ -32,3 +32,5 @@ jobs:
         run: uv run near-py-tool create-dev-account use-random-account-id autogenerate-new-keypair save-to-legacy-keychain network-config testnet create
       - name: Deploy the example contract to testnet
         run: uv run near-py-tool deploy --project-dir=test-project build-non-reproducible-wasm '*' with-init-call echo json-args '{"input":"ci-test"}' prepaid-gas '300 Tgas' attached-deposit '0 NEAR' network-config testnet sign-with-legacy-keychain send
+      - name: Run tests
+        run: PYTHONPATH=near_py_tool uv run -m pytest        

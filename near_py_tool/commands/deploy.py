@@ -1,60 +1,17 @@
 import click
-from rich_click import RichGroup, RichCommand
+from rich_click import RichGroup
 import near_py_tool.click_utils as click_utils
-from pathlib import Path
-import json
-from near_py_tool.run_command import run_command, is_command_available
-from near_py_tool.commands.build import do_build
-
-# todo: decide what to do with extra cmdline arguments inherited form cargo-near which aren't available in near-cli-rs which we are calling to here
+import near_py_tool.api as api
 
 def do_deploy(ctx, extra_args):
-    if not is_command_available('near'):
-        click.echo(click.style("Error: NEAR CLI is required to be installed to deploy a contract", fg='bright_red'))
-        click.echo("""
-You can install NEAR CLI by running one of the following commands:
-
-  curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/near-cli-rs/releases/download/v0.18.0/near-cli-rs-installer.sh | sh
-  
-or 
-  
-  powershell -ExecutionPolicy ByPass -c "irm https://github.com/near/near-cli-rs/releases/download/v0.18.0/near-cli-rs-installer.ps1 | iex"
-  
-or 
-  
-  npm install near-cli-rs@0.18.0
-  
-or downloading the binaries from https://github.com/near/near-cli-rs/releases/
-""")
     params = click_utils.all_parent_command_params(ctx)
     project_dir = params.get('deploy', {}).get('project_dir')
-    rebuid_all = params.get('build-non-reproducible-wasm', {}).get('rebuild_all', False)
-    project_path = Path(project_dir).resolve()
-    project_name = project_path.name
-    
-    wasm_path = project_path / "build" / Path(project_name).with_suffix(".wasm")    
-    do_build(project_path, rebuid_all)
-
+    rebuild_all = params.get('build-non-reproducible-wasm', {}).get('rebuild_all', False)
     account_id = (params.get('build-non-reproducible-wasm') or params.get('build-reproducible-wasm')).get('contract_account_id')
-    if account_id == '*':
-      account_id = local_keychain_account_ids()[0]
-    
-    cmdline = ['near', 'contract', 'deploy', account_id, 'use-file', wasm_path]
-    cmdline.extend([str(arg) for arg in extra_args])
-    
-    run_command(cmdline, cwd=project_path)
-    
-def local_keychain_account_ids():
-    try:
-        accounts_path = Path("~/.near-credentials/accounts.json").expanduser().resolve()
-        with open(accounts_path, "r") as f:
-            d = json.load(f)
-            return [v['account_id'] for v in d]
-    except:
-        pass
-  
+    api.deploy(project_dir, rebuild_all=rebuild_all, account_id=account_id, extra_args=extra_args)
+
 def account_id_prompt(prompt):
-    local_accounts = local_keychain_account_ids()
+    local_accounts = api.local_keychain_account_ids()
     return click_utils.choice(prompt, local_accounts) if local_accounts else click.prompt(prompt)
 
 @click.group(cls=RichGroup, invoke_without_command=True)
