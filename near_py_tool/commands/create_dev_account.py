@@ -3,6 +3,7 @@ import click
 from rich_click import RichGroup
 import near_py_tool.click_utils as click_utils
 from near_py_tool.run_command import run_command, check_deploy_dependencies
+import near_py_tool.api as api
 
 def create_account(ctx, extra_args):
     check_deploy_dependencies()
