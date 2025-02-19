@@ -1,8 +1,9 @@
 import near_py_tool.api as api
 from pathlib import Path
+import randomname
 
 
-def test_method(contract_path, method_name, input):
+def test_method(contract_path, method_name, input, attached_deposit=0):
     """
     Builds & deploys the smart contract from the current python file and then calls the specified method with the specified input
     :param name: method name
@@ -26,7 +27,9 @@ def test_method(contract_path, method_name, input):
             "send",
         ],
     )
-    result, gas_burnt = api.call_method(account_id, method_name, input)
+    result, gas_burnt = api.call_method(
+        account_id, method_name, input, attached_deposit=attached_deposit
+    )
     print(
         f"test_method({contract_path}, {method_name}, {input}): {result}, {gas_burnt / 1e12} Tgas"
     )
@@ -34,6 +37,9 @@ def test_method(contract_path, method_name, input):
 
 
 def build_contract(contract_path):
+    """
+    Compiles `contract_path` into WASM file in the `build` directory with .py extension replaced with .wasm
+    """
     return api.build(
         Path(contract_path).parent,
         rebuild_all=False,
@@ -41,11 +47,21 @@ def build_contract(contract_path):
     )
 
 
-def include_contract_wasm(contract_path):
+def test_add_extra_balance():
     """
-    This produces the compiled WASM output bytes for the `contract_path` but is handled at the build step via AST substitution
+    Adds extra balance to the test account
     """
-    return b""
+    prev_account_id = api.create_account(f"{randomname.get_name()}.testnet", ['autogenerate-new-keypair', 'save-to-legacy-keychain', 'network-config', 'testnet', 'create'])
+    new_account_id = api.create_account(f"{randomname.get_name()}.testnet", ['autogenerate-new-keypair', 'save-to-legacy-keychain', 'network-config', 'testnet', 'create'])
+    api.transfer_amount(prev_account_id, new_account_id, 9.9)
+    return api.local_keychain_account_ids()[0]
+
+
+def test_account_id():
+    """
+    Returns account id the test is running under
+    """
+    return api.local_keychain_account_ids()[0]
 
 
 # Mock implementation of the MicroPython C module

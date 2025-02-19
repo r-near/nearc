@@ -399,6 +399,11 @@ def create_account(account_id, extra_args):
     ]
     cmdline.extend([str(arg) for arg in extra_args])
     run_command(cmdline)
+    return account_id
+  
+  
+def transfer_amount(from_account_id, to_account_id, amount):
+    run_command(['near', 'send', from_account_id, to_account_id, str(amount)])
 
 
 def deploy(
@@ -450,13 +455,14 @@ def get_tx_data(tx_id, account_id):
     success_value = base64.b64decode(
         response.get("result", {}).get("status", {}).get("SuccessValue", "")
     )
+    # bug: rpc returns incorrect truncated value here
     gas_burnt = int(
         response.get("result", {}).get("transaction_outcome", {}).get("outcome", {}).get("gas_burnt", "0")
     )
     return success_value, gas_burnt
 
 
-def call_method(account_id, method_name, input):
+def call_method(account_id, method_name, input, attached_deposit=0):
     if isinstance(input, dict) or isinstance(input, list):
         args_type = "json-args"
         args = json.dumps(input)
@@ -478,7 +484,7 @@ def call_method(account_id, method_name, input):
         "prepaid-gas",
         "300 Tgas",
         "attached-deposit",
-        "0 NEAR",
+        f"{attached_deposit} NEAR",
         "sign-as",
         account_id,
         "network-config",
@@ -487,11 +493,7 @@ def call_method(account_id, method_name, input):
         "send",
     ]
     exit_code, stdout, stderr = run_command(cmdline, capture_output=True)
-    print(f"exit_code {exit_code}, stdout {stdout}, stderr {stderr}")
-    match = re.search(r"Transaction ID: (\w+)", stderr)
-    if not match:
-        raise RuntimeError(
-            f"Unable to extract Transaction ID from {cmdline} command output above"
-        )
-    tx_id = match.group(1)
-    return get_tx_data(tx_id, account_id)
+    print(stderr)
+    # tx_id = re.search(r"Transaction ID: (\w+)", stderr).group(1)
+    gas_burnt = float(re.search(r"Gas burned: (\d+\.\d+) Tgas", stderr).group(1)) * 1e12
+    return stdout, gas_burnt

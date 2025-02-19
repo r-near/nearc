@@ -40,7 +40,9 @@ def cross_contract_call_gas():
 @near.export
 def cross_contract_callback():
     result = calling_data()
-    result["promise_results"] = [near.promise_result(i) for i in range(near.promise_results_count())]
+    result["promise_results"] = [
+        near.promise_result(i) for i in range(near.promise_results_count())
+    ]
     near.value_return(json.dumps(result))
 
 

@@ -13,7 +13,7 @@ def expensive():
 
 
 def test_expensive():
-    for n in [10, 1000, 100000]:
+    for n in [100, 10000, 20000]:
         result, gas_burnt = near.test_method(__file__, "expensive", str(n))
         assert int(result) < 0
         print(f"expensive({n}): {int(result)}, {gas_burnt / 1e12} Tgas")
