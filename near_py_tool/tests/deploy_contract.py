@@ -6,7 +6,7 @@ import json
 def deploy_contract():
     promise_id = near.promise_batch_create("$promise_api_contract_account_id")
     near.promise_batch_action_create_account(promise_id)
-    near.promise_batch_action_transfer(promise_id, 4500000000000000000000000)
+    near.promise_batch_action_transfer(promise_id, 6500000000000000000000000)
     near.promise_batch_action_deploy_contract(
         promise_id,
         b"$promise_api.wasm",
