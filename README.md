@@ -15,14 +15,14 @@ Dependencies
 `near-py-tool` expects the following dependencies installed:
 - Python>=3.9
 - essential build tools like `make` and C compiler
-- [Emscripten](https://emscripten.org/docs/getting_started/downloads.html) for compiling Python into WASM via MicroPython
+- [Emscripten](https://emscripten.org/docs/getting_started/downloads.html) for compiling Python into WASM via MicroPython (can be installed automatically by `near-py-tool`, if desired)
 - [near-cli-rs](https://github.com/near/near-cli-rs) for NEAR Protocol interactions
 
 
 Platform support
 ----------------
 
-Currenly Linux, MacOS and Windows (native/MSYS2/WSL) platforms are supported/
+Currenly Linux, MacOS and Windows (native/MSYS2/WSL) platforms are supported
 
 
 Python library support
@@ -48,9 +48,9 @@ Everything from https://github.com/near/near-sdk-rs/blob/master/near-sys/src/lib
 - `near.value_return(value)` returns a value (`str` or `bytes`) from the contract
 - `near.log_utf8(message)` logs a message (`str`)
 
-Contract methods to be exported from the WASM binary should be decorated with `@near.export`.
+Contract methods to be exported from the WASM binary should be decorated with `@near.export`
 
-See the `near-py-tool new`-generated project for more details.
+See the [NEAR-ABI.md](NEAR-ABI.md) for a complete list of available methods and their type signatures.
 
 
 Getting started
@@ -68,5 +68,4 @@ TODO
 ----
 
 - NEAR ABI metadata generation
-- more tests
 - porting of a few popular/useful contracts from Rust to Python
