@@ -39,7 +39,7 @@ def test_deploy_contract():
         )
     result, gas_burnt = near.test_method(
         processed_contract_path, "deploy_contract", {}, attached_deposit=0
-    )
+    )    
     result_json = json.loads(result)
     assert result_json["current_account_id"] == promise_api_contract_account_id
     assert result_json["signer_account_id"] == test_account_id

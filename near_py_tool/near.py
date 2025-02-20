@@ -28,7 +28,7 @@ def test_method(contract_path, method_name, input, attached_deposit=0):
         ],
         install_dependencies_silently=True
     )
-    result, gas_burnt = api.call_method(
+    result, gas_burnt, gas_profile = api.call_method(
         account_id, method_name, input, attached_deposit=attached_deposit, install_dependencies_silently=True
     )
     print(

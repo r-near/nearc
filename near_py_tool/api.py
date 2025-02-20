@@ -255,7 +255,12 @@ def install_pyproject_dependencies(project_path, venv_path):
             )
 
 
-def build(project_dir, rebuild_all, contract_name="contract.py", install_dependencies_silently=False):
+def build(
+    project_dir,
+    rebuild_all,
+    contract_name="contract.py",
+    install_dependencies_silently=False,
+):
     project_path = Path(project_dir).resolve()
     project_name = project_path.name
     build_path = project_path / "build"
@@ -283,7 +288,9 @@ def build(project_dir, rebuild_all, contract_name="contract.py", install_depende
 
     build_path.mkdir(parents=True, exist_ok=True)
 
-    check_build_dependencies(build_path, install_dependencies_silently=install_dependencies_silently)
+    check_build_dependencies(
+        build_path, install_dependencies_silently=install_dependencies_silently
+    )
 
     # click.echo(f"Running `uv sync` in {project_path}...")
     # run_build_command(build_path, ['uv', "sync"], cwd=project_path)
@@ -389,7 +396,9 @@ def is_account_id_available(account_id, network):
 
 
 def create_account(account_id, extra_args, install_dependencies_silently=False):
-    check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
+    check_deploy_dependencies(
+        install_dependencies_silently=install_dependencies_silently
+    )
     cmdline = [
         "near",
         "account",
@@ -400,10 +409,10 @@ def create_account(account_id, extra_args, install_dependencies_silently=False):
     cmdline.extend([str(arg) for arg in extra_args])
     run_command(cmdline)
     return account_id
-  
-  
+
+
 def transfer_amount(from_account_id, to_account_id, amount):
-    run_command(['near', 'send', from_account_id, to_account_id, str(amount)])
+    run_command(["near", "send", from_account_id, to_account_id, str(amount)])
 
 
 def deploy(
@@ -412,9 +421,11 @@ def deploy(
     account_id="*",
     extra_args=[],
     contract_name="contract.py",
-    install_dependencies_silently=False
+    install_dependencies_silently=False,
 ):
-    check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
+    check_deploy_dependencies(
+        install_dependencies_silently=install_dependencies_silently
+    )
     project_path = Path(project_dir).resolve()
     project_name = project_path.name
     wasm_path = (
@@ -424,7 +435,12 @@ def deploy(
             contract_name if contract_name != "contract.py" else project_name
         ).with_suffix(".wasm")
     )
-    build(project_path, rebuild_all, contract_name=contract_name, install_dependencies_silently=install_dependencies_silently)
+    build(
+        project_path,
+        rebuild_all,
+        contract_name=contract_name,
+        install_dependencies_silently=install_dependencies_silently,
+    )
     if account_id == "*":
         account_id = local_keychain_account_ids()[0]
     cmdline = ["near", "contract", "deploy", account_id, "use-file", wasm_path]
@@ -456,15 +472,46 @@ def get_tx_data(tx_id, account_id):
     success_value = base64.b64decode(
         response.get("result", {}).get("status", {}).get("SuccessValue", "")
     )
-    # bug: rpc returns incorrect truncated value here
-    gas_burnt = int(
-        response.get("result", {}).get("transaction_outcome", {}).get("outcome", {}).get("gas_burnt", "0")
+    success_receipt_id = (
+        response.get("result", {})
+        .get("transaction_outcome", {})
+        .get("outcome", {})
+        .get("status", {})
+        .get("SuccessReceiptId", "")
     )
-    return success_value, gas_burnt
+    success_receipt = next(
+        (
+            d
+            for d in response.get("result", {}).get("receipts_outcome", {})
+            if d.get("id") == success_receipt_id
+        ),
+        {},
+    )
+    gas_burnt = success_receipt.get("outcome", {}).get("gas_burnt", 0)
+    gas_profile = {
+        cost["cost"]: cost["gas_used"]
+        for cost in success_receipt.get("outcome", {})
+        .get("metadata", {})
+        .get("gas_profile", {})
+    }
+    return success_value, gas_burnt, gas_profile
+  
+def format_gas(gas):
+    if gas >= 1e12:
+        return f"{(gas / 1e12):.2f}T"
+    else:
+        return f"{(gas / 1e9):.2f}G"
 
-
-def call_method(account_id, method_name, input, attached_deposit=0, install_dependencies_silently=False):
-    check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
+def call_method(
+    account_id,
+    method_name,
+    input,
+    attached_deposit=0,
+    install_dependencies_silently=False,
+):
+    check_deploy_dependencies(
+        install_dependencies_silently=install_dependencies_silently
+    )
     if isinstance(input, dict) or isinstance(input, list):
         args_type = "json-args"
         args = json.dumps(input)
@@ -496,6 +543,13 @@ def call_method(account_id, method_name, input, attached_deposit=0, install_depe
     ]
     exit_code, stdout, stderr = run_command(cmdline, capture_output=True)
     print(stderr)
-    # tx_id = re.search(r"Transaction ID: (\w+)", stderr).group(1)
-    gas_burnt = float(re.search(r"Gas burned: (\d+\.\d+) Tgas", stderr).group(1)) * 1e12
-    return stdout, gas_burnt
+    tx_id = re.search(r"Transaction ID: (\w+)", stderr).group(1)
+    result, gas_burnt, gas_profile = get_tx_data(tx_id, account_id)
+    print(f"gas_burnt: {gas_burnt}, gas_profile: {gas_profile}")
+    with open(f"gas-profile-report.md", "a") as f:
+        f.write(f"## `near-py-tool` test run gas statistics\n")
+        f.write(f"### {method_name}({input})\n")
+        f.write(f"- Gas used to execute the receipt (actual contract call): `{format_gas(gas_burnt)}`\n")
+        for k, v in gas_profile.items():
+            f.write(f"  - `{k}`: `{format_gas(int(v))}`\n")
+    return result, gas_burnt, gas_profile
