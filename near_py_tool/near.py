@@ -26,9 +26,10 @@ def test_method(contract_path, method_name, input, attached_deposit=0):
             "sign-with-legacy-keychain",
             "send",
         ],
+        install_dependencies_silently=True
     )
     result, gas_burnt = api.call_method(
-        account_id, method_name, input, attached_deposit=attached_deposit
+        account_id, method_name, input, attached_deposit=attached_deposit, install_dependencies_silently=True
     )
     print(
         f"test_method({contract_path}, {method_name}, {input}): {result}, {gas_burnt / 1e12} Tgas"
@@ -44,6 +45,7 @@ def build_contract(contract_path):
         Path(contract_path).parent,
         rebuild_all=False,
         contract_name=Path(contract_path).name,
+        install_dependencies_silently=True
     )
 
 

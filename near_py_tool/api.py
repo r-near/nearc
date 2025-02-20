@@ -255,7 +255,7 @@ def install_pyproject_dependencies(project_path, venv_path):
             )
 
 
-def build(project_dir, rebuild_all, contract_name="contract.py"):
+def build(project_dir, rebuild_all, contract_name="contract.py", install_dependencies_silently=False):
     project_path = Path(project_dir).resolve()
     project_name = project_path.name
     build_path = project_path / "build"
@@ -283,7 +283,7 @@ def build(project_dir, rebuild_all, contract_name="contract.py"):
 
     build_path.mkdir(parents=True, exist_ok=True)
 
-    check_build_dependencies(build_path)
+    check_build_dependencies(build_path, install_dependencies_silently=install_dependencies_silently)
 
     # click.echo(f"Running `uv sync` in {project_path}...")
     # run_build_command(build_path, ['uv', "sync"], cwd=project_path)
@@ -388,8 +388,8 @@ def is_account_id_available(account_id, network):
     )
 
 
-def create_account(account_id, extra_args):
-    check_deploy_dependencies()
+def create_account(account_id, extra_args, install_dependencies_silently=False):
+    check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
     cmdline = [
         "near",
         "account",
@@ -412,8 +412,9 @@ def deploy(
     account_id="*",
     extra_args=[],
     contract_name="contract.py",
+    install_dependencies_silently=False
 ):
-    check_deploy_dependencies()
+    check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
     project_path = Path(project_dir).resolve()
     project_name = project_path.name
     wasm_path = (
@@ -423,7 +424,7 @@ def deploy(
             contract_name if contract_name != "contract.py" else project_name
         ).with_suffix(".wasm")
     )
-    build(project_path, rebuild_all, contract_name=contract_name)
+    build(project_path, rebuild_all, contract_name=contract_name, install_dependencies_silently=install_dependencies_silently)
     if account_id == "*":
         account_id = local_keychain_account_ids()[0]
     cmdline = ["near", "contract", "deploy", account_id, "use-file", wasm_path]
@@ -462,7 +463,8 @@ def get_tx_data(tx_id, account_id):
     return success_value, gas_burnt
 
 
-def call_method(account_id, method_name, input, attached_deposit=0):
+def call_method(account_id, method_name, input, attached_deposit=0, install_dependencies_silently=False):
+    check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
     if isinstance(input, dict) or isinstance(input, list):
         args_type = "json-args"
         args = json.dumps(input)

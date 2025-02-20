@@ -23,7 +23,7 @@ jobs:
       - name: Checkout micropython-lib submodule
         run: git -C near_py_tool/assets/micropython submodule update --init lib/micropython-lib
       - name: Install dependencies
-        run: sudo apt install -y make emscripten python3-venv python3-pip python-is-python3
+        run: sudo apt install -y make python3-venv python3-pip python-is-python3
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Build distributions

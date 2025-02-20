@@ -67,14 +67,24 @@ def install_emscripten(build_path):
     run_build_command(build_path, [emsdk_path / 'emsdk', 'install', '4.0.0'], cwd=emsdk_path)
     run_build_command(build_path, [emsdk_path / 'emsdk', 'activate', '4.0.0'], cwd=emsdk_path)
     
-def check_build_dependencies(build_path):
+def install_near_cli():
+    near_cli_release = "v0.18.0"
+    if is_platform_native_windows():
+        run_command(['powershell', '-ExecutionPolicy', 'ByPass', '-c', f"irm https://github.com/near/near-cli-rs/releases/download/{near_cli_release}/near-cli-rs-installer.ps1 | iex"])
+    else:
+        run_command(['sh', '-l', '-c', f"curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/near-cli-rs/releases/download/{near_cli_release}/near-cli-rs-installer.sh | sh"])
+    
+def check_build_dependencies(build_path, install_dependencies_silently=False):
     msys2_path = get_msys2_path(build_path)
     if is_platform_native_windows() and not is_msys2_installed(msys2_path):
         install_msys2(msys2_path, build_path)
         install_emscripten(build_path)
     if not is_build_command_available(build_path, 'emcc'):
-        click.echo(click.style("Error: Emscripten C to WASM compiler is required for building Python NEAR contracts", fg='bright_red'))
-        click.echo("""
+        if install_dependencies_silently:
+            install_emscripten(build_path)
+        else:
+            click.echo(click.style("Error: Emscripten C to WASM compiler is required for building Python NEAR contracts", fg='bright_red'))
+            click.echo("""
 You can install Emscripten via a package manager or by doing the following:
 
   git clone https://github.com/emscripten-core/emsdk.git
@@ -82,16 +92,15 @@ You can install Emscripten via a package manager or by doing the following:
   ./emsdk install latest
   ./emsdk activate latest
   source ./emsdk_env.sh
-                               
+                              
 """)
-        # todo: command-line option to bypass any prompts
-        install = click_utils.choice(
-            f"Install Emscripten to {get_emsdk_path(build_path)} using the command sequence above?",
-            ["Yes", "No / exit" ]).lower()
-        if install == "yes":
-          install_emscripten(build_path)
-        else:
-          sys.exit(0)
+            install = click_utils.choice(
+                f"Install Emscripten to {get_emsdk_path(build_path)} using the command sequence above?",
+                ["Yes", "No / exit" ]).lower()
+            if install == "yes":
+                install_emscripten(build_path)
+            else:
+                sys.exit(0)
     if not is_platform_native_windows(): # don't check on native windows since we install our own msys2 there with all required packages
         if not is_build_command_available(build_path, 'make'):
             click.echo(click.style("Error: make is required for building Python NEAR contracts", fg='bright_red'))
@@ -102,10 +111,13 @@ You can install Emscripten via a package manager or by doing the following:
             click.echo("Please install a C compiler via a package manager before continuing")
             sys.exit(1)
             
-def check_deploy_dependencies():
+def check_deploy_dependencies(install_dependencies_silently=False):
     if not is_command_available('near'):
-        click.echo(click.style("Error: NEAR CLI is required to be installed to deploy a contract", fg='bright_red'))
-        click.echo("""
+        if install_dependencies_silently:
+            install_near_cli()
+        else:
+            click.echo(click.style("Error: NEAR CLI is required to be installed to deploy a contract", fg='bright_red'))
+            click.echo("""
 You can install NEAR CLI by running one of the following commands:
 
   curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/near-cli-rs/releases/download/v0.18.0/near-cli-rs-installer.sh | sh
@@ -120,6 +132,13 @@ or
   
 or downloading the binaries from https://github.com/near/near-cli-rs/releases/
 """)
+            install = click_utils.choice(
+                f"Install NEAR CLI using the command above?",
+                ["Yes", "No / exit" ]).lower()
+            if install == "yes":
+                install_near_cli()
+            else:
+                sys.exit(0)
 
 def is_command_available(command_name):
     return shutil.which(command_name) is not None
