@@ -38,7 +38,6 @@ Unneeded modules from the MicroPython stdlib can be excluded from the build by a
     exclude-micropython-stdlib-packages = [...]
 
 
-
 NEAR ABI support
 ----------------
 
@@ -51,6 +50,14 @@ Everything from https://github.com/near/near-sdk-rs/blob/master/near-sys/src/lib
 Contract methods to be exported from the WASM binary should be decorated with `@near.export`
 
 See the [NEAR-ABI.md](NEAR-ABI.md) for a complete list of available methods and their type signatures.
+
+
+Benchmarks
+----------
+
+See [GAS-PROFILE-REPORT.md](GAS-PROFILE-REPORT.md) for gas statistics from the test runs
+
+Stats for similar Rust/JS contracts are available [here](https://github.com/near/near-sdk-js/tree/develop/benchmark)
 
 
 Getting started
