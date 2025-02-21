@@ -51,7 +51,7 @@ def ed25519_verify(sig: bytes, msg: bytes, pub_key: bytes) -> bool
 def value_return(value: str | bytes) -> None
 def panic() -> None
 def panic_utf8(msg: str) -> None
-def log_utf8(msg: str) -> None
+def log_utf8(msg: str | bytes) -> None
 def log_utf16(msg: bytes) -> None
 def abort(msg: str, filename: str, line: int, col: int) -> None
 
