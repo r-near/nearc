@@ -5,7 +5,7 @@ Interface to NEAR runtime is provided via `near` module.
 
 Everything from https://github.com/near/near-sdk-rs/blob/master/near-sys/src/lib.rs should be available via `near` module. Type signatures differ where required for Python value returns or convenience.
 
-Note: register 0 is used as temporary storage when a NEAR runtime method returns value via register and will be overwritten by such calls
+Note: register 0 is used as temporary storage when a NEAR runtime method returns a value via register and will be overwritten by such calls
 
 
 NEAR ABI methods
@@ -52,7 +52,7 @@ def value_return(value: str | bytes) -> None
 def panic() -> None
 def panic_utf8(msg: str) -> None
 def log_utf8(msg: str) -> None
-def log_utf16(msg: list[int]) -> None
+def log_utf16(msg: bytes) -> None
 def abort(msg: str, filename: str, line: int, col: int) -> None
 
 # Promises API
