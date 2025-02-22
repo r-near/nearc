@@ -33,4 +33,9 @@ jobs:
       - name: Deploy the example contract to testnet
         run: uv run near-py-tool deploy --project-dir=test-project --install-dependencies-silently build-non-reproducible-wasm '*' with-init-call echo json-args '{"input":"ci-test"}' prepaid-gas '300 Tgas' attached-deposit '0 NEAR' network-config testnet sign-with-legacy-keychain send
       - name: Run tests
-        run: PYTHONPATH=near_py_tool uv run -m pytest        
+        run: PYTHONPATH=near_py_tool uv run -m pytest
+      - name: Upload test gas profile report
+        uses: actions/upload-artifact@v4
+        with:
+          name: Test gas profile report
+          path: gas-profile-report.md
