@@ -1,24 +1,25 @@
 import ast
+import base64
+import json
 import os
-import sys
 import re
 import shutil
-from pathlib import Path
+import sys
 from importlib.resources import files
-import toml
 from pathlib import Path
-import json
-import requests
-import base64
+
 import click
+import requests
+import toml
+
+import near_py_tool.api as api
 from near_py_tool.run_command import (
-    run_command,
-    run_build_command,
-    is_command_available,
     check_build_dependencies,
     check_deploy_dependencies,
+    is_command_available,
+    run_build_command,
+    run_command,
 )
-import near_py_tool.api as api
 
 
 def get_near_exports_from_file(file_path):
@@ -37,8 +38,7 @@ def get_near_exports_from_file(file_path):
                 ):
                     near_exports.add(node.name)
         if isinstance(node, ast.FunctionDef) and any(
-            isinstance(d, ast.Name) and d.id == "near.export"
-            for d in node.decorator_list
+            isinstance(d, ast.Name) and d.id == "near.export" for d in node.decorator_list
         ):
             near_exports.add(node.name)
 
@@ -156,9 +156,7 @@ def is_external_package(name):
     )
 
 
-def generate_manifest(
-    contract_path, package_paths, manifest_path, excluded_stdlib_packages
-):
+def generate_manifest(contract_path, package_paths, manifest_path, excluded_stdlib_packages):
     with open(manifest_path, "w") as o:
         o.write("# THIS FILE IS GENERATED, DO NOT EDIT\n\n")
         for module in mpy_stdlib_packages:
@@ -170,9 +168,7 @@ def generate_manifest(
             if is_mpy_lib_package(module):
                 o.write(f'require("{module}")\n')
             elif not is_mpy_module(module):
-                base_path = str(path.parent.relative_to(manifest_path.parent)).replace(
-                    "\\", "/"
-                )
+                base_path = str(path.parent.relative_to(manifest_path.parent)).replace("\\", "/")
                 o.write(f'package("{module}", base_path="{base_path}")\n')
         o.write(f'module("{contract_path.name}", base_path="..")\n')
 
@@ -182,9 +178,7 @@ def generate_export_wrappers(contract_path, exports, export_wrappers_path):
         o.write("/* THIS FILE IS GENERATED, DO NOT EDIT */\n\n")
         o.write("void run_frozen_fn(const char *file_name, const char *fn_name);\n\n")
         for export in exports:
-            o.write(
-                f'void {export}() \u007b\n  run_frozen_fn("{contract_path.name}", "{export}");\n\u007d\n\n'
-            )
+            o.write(f'void {export}() \u007b\n  run_frozen_fn("{contract_path.name}", "{export}");\n\u007d\n\n')
 
 
 def get_venv_package_paths(file_path, venv_path):
@@ -192,9 +186,7 @@ def get_venv_package_paths(file_path, venv_path):
     imports = get_imports_from_file(file_path)
     package_paths = {}
     glob_pattern_base = (
-        "lib/site-packages"
-        if (venv_path / "lib" / "site-packages").is_dir()
-        else "lib/python*.*/site-packages"
+        "lib/site-packages" if (venv_path / "lib" / "site-packages").is_dir() else "lib/python*.*/site-packages"
     )
     for module_name in imports:
         if is_external_package(module_name):
@@ -204,9 +196,7 @@ def get_venv_package_paths(file_path, venv_path):
                     f"Warning: module {module_name} path wasn't resolved; is it installed in the current venv at {venv_path}?"
                 )
             elif len(paths) > 1:
-                click.echo(
-                    f"Warning: module {module_name} has multiple candidate paths: {paths}"
-                )
+                click.echo(f"Warning: module {module_name} has multiple candidate paths: {paths}")
             for path in paths:
                 package_paths[module_name] = path
     return package_paths
@@ -217,11 +207,7 @@ def get_excluded_stdlib_packages(project_path):
     if pyproject_path.is_file():
         with open(pyproject_path, "r") as file:
             pyproject_data = toml.load(file)
-        return (
-            pyproject_data.get("tool", {})
-            .get("near-py-tool", {})
-            .get("exclude-micropython-stdlib-packages", [])
-        )
+        return pyproject_data.get("tool", {}).get("near-py-tool", {}).get("exclude-micropython-stdlib-packages", [])
     else:
         return []
 
@@ -267,16 +253,10 @@ def build(
     mpy_cross_build_path = project_path / "build" / "mpy-cross"
     venv_path = build_path / ".venv"
     mpy_cross_path = files("near_py_tool") / "assets" / "micropython" / "mpy-cross"
-    mpy_port_path = (
-        files("near_py_tool") / "assets" / "micropython" / "ports" / "webassembly-near"
-    )
+    mpy_port_path = files("near_py_tool") / "assets" / "micropython" / "ports" / "webassembly-near"
     contract_path = project_path / contract_name
     if not contract_path.is_file():
-        click.echo(
-            click.style(
-                f"Error: contract file {contract_path} doesn't exist", fg="bright_red"
-            )
-        )
+        click.echo(click.style(f"Error: contract file {contract_path} doesn't exist", fg="bright_red"))
         sys.exit(1)
 
     if rebuild_all:
@@ -288,9 +268,7 @@ def build(
 
     build_path.mkdir(parents=True, exist_ok=True)
 
-    check_build_dependencies(
-        build_path, install_dependencies_silently=install_dependencies_silently
-    )
+    check_build_dependencies(build_path, install_dependencies_silently=install_dependencies_silently)
 
     # click.echo(f"Running `uv sync` in {project_path}...")
     # run_build_command(build_path, ['uv', "sync"], cwd=project_path)
@@ -324,9 +302,7 @@ def build(
     click.echo(f"The contract WASM will export the following methods: {exports}")
 
     excluded_stdlib_packages = get_excluded_stdlib_packages(project_path)
-    print(
-        f"Excluding the following MicroPython stdlib packages from the build: {excluded_stdlib_packages}"
-    )
+    print(f"Excluding the following MicroPython stdlib packages from the build: {excluded_stdlib_packages}")
     print(
         f"(this list can be adjusted via [tool.near-py-tool] exclude-micropython-stdlib-packages setting in pyproject.toml)"
     )
@@ -339,9 +315,7 @@ def build(
     )
     generate_export_wrappers(contract_path, exports, build_path / "export_wrappers.c")
     try:
-        os.unlink(
-            build_path / "frozen_content.c"
-        )  # force frozen content rebuilt every time
+        os.unlink(build_path / "frozen_content.c")  # force frozen content rebuilt every time
     except Exception:
         pass
 
@@ -370,9 +344,7 @@ def build(
         cwd=project_path,
     )
 
-    click.echo(
-        f"Contract WASM file was build successfully and is located at {contract_wasm_path}"
-    )
+    click.echo(f"Contract WASM file was build successfully and is located at {contract_wasm_path}")
 
     return contract_wasm_path
 
@@ -396,9 +368,7 @@ def is_account_id_available(account_id, network):
 
 
 def create_account(account_id, extra_args, install_dependencies_silently=False):
-    check_deploy_dependencies(
-        install_dependencies_silently=install_dependencies_silently
-    )
+    check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
     cmdline = [
         "near",
         "account",
@@ -423,17 +393,13 @@ def deploy(
     contract_name="contract.py",
     install_dependencies_silently=False,
 ):
-    check_deploy_dependencies(
-        install_dependencies_silently=install_dependencies_silently
-    )
+    check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
     project_path = Path(project_dir).resolve()
     project_name = project_path.name
     wasm_path = (
         project_path
         / "build"
-        / Path(
-            contract_name if contract_name != "contract.py" else project_name
-        ).with_suffix(".wasm")
+        / Path(contract_name if contract_name != "contract.py" else project_name).with_suffix(".wasm")
     )
     build(
         project_path,
@@ -466,12 +432,8 @@ def get_tx_data(tx_id, account_id):
         "method": "tx",
         "params": [tx_id, account_id],
     }
-    response = requests.post(
-        "https://rpc.testnet.near.org", headers=headers, json=data
-    ).json()
-    success_value = base64.b64decode(
-        response.get("result", {}).get("status", {}).get("SuccessValue", "")
-    )
+    response = requests.post("https://rpc.testnet.near.org", headers=headers, json=data).json()
+    success_value = base64.b64decode(response.get("result", {}).get("status", {}).get("SuccessValue", ""))
     success_receipt_id = (
         response.get("result", {})
         .get("transaction_outcome", {})
@@ -480,27 +442,23 @@ def get_tx_data(tx_id, account_id):
         .get("SuccessReceiptId", "")
     )
     success_receipt = next(
-        (
-            d
-            for d in response.get("result", {}).get("receipts_outcome", {})
-            if d.get("id") == success_receipt_id
-        ),
+        (d for d in response.get("result", {}).get("receipts_outcome", {}) if d.get("id") == success_receipt_id),
         {},
     )
     gas_burnt = success_receipt.get("outcome", {}).get("gas_burnt", 0)
     gas_profile = {
         cost["cost"]: cost["gas_used"]
-        for cost in success_receipt.get("outcome", {})
-        .get("metadata", {})
-        .get("gas_profile", {})
+        for cost in success_receipt.get("outcome", {}).get("metadata", {}).get("gas_profile", {})
     }
     return success_value, gas_burnt, gas_profile
-  
+
+
 def format_gas(gas):
     if gas >= 1e12:
         return f"{(gas / 1e12):.2f}T"
     else:
         return f"{(gas / 1e9):.2f}G"
+
 
 def call_method(
     account_id,
@@ -509,9 +467,7 @@ def call_method(
     attached_deposit=0,
     install_dependencies_silently=False,
 ):
-    check_deploy_dependencies(
-        install_dependencies_silently=install_dependencies_silently
-    )
+    check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
     if isinstance(input, dict) or isinstance(input, list):
         args_type = "json-args"
         args = json.dumps(input)

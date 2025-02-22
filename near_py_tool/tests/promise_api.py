@@ -1,6 +1,7 @@
-import near
-import math
 import json
+import math
+
+import near
 
 # Functions consumed by the promise api tests
 
@@ -40,9 +41,7 @@ def cross_contract_call_gas():
 @near.export
 def cross_contract_callback():
     result = calling_data()
-    result["promise_results"] = [
-        near.promise_result(i) for i in range(near.promise_results_count())
-    ]
+    result["promise_results"] = [near.promise_result(i) for i in range(near.promise_results_count())]
     near.value_return(json.dumps(result))
 
 
@@ -59,9 +58,7 @@ def test_promise_create():
 
 @near.export
 def test_promise_create_gas_overflow():
-    near.promise_create(
-        "callee-contract.test.near", "cross_contract_callee", "abc", 0, math.pow(2, 64)
-    )
+    near.promise_create("callee-contract.test.near", "cross_contract_callee", "abc", 0, math.pow(2, 64))
 
 
 @near.export

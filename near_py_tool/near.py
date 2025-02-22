@@ -1,6 +1,8 @@
-import near_py_tool.api as api
 from pathlib import Path
+
 import randomname
+
+import near_py_tool.api as api
 
 
 def test_method(contract_path, method_name, input, attached_deposit=0):
@@ -12,9 +14,7 @@ def test_method(contract_path, method_name, input, attached_deposit=0):
     This is no-op in the modnear.c implementation which gets compiled into WASM file
     """
     account_id = api.local_keychain_account_ids()[0]
-    print(
-        f"Path(contract_path): {Path(contract_path)} Path(contract_path).name: {Path(contract_path).name}"
-    )
+    print(f"Path(contract_path): {Path(contract_path)} Path(contract_path).name: {Path(contract_path).name}")
     api.deploy(
         Path(contract_path).parent,
         account_id=account_id,
@@ -26,14 +26,12 @@ def test_method(contract_path, method_name, input, attached_deposit=0):
             "sign-with-legacy-keychain",
             "send",
         ],
-        install_dependencies_silently=True
+        install_dependencies_silently=True,
     )
     result, gas_burnt, gas_profile = api.call_method(
         account_id, method_name, input, attached_deposit=attached_deposit, install_dependencies_silently=True
     )
-    print(
-        f"test_method({contract_path}, {method_name}, {input}): {result}, {gas_burnt / 1e12} Tgas"
-    )
+    print(f"test_method({contract_path}, {method_name}, {input}): {result}, {gas_burnt / 1e12} Tgas")
     return result, gas_burnt
 
 
@@ -45,7 +43,7 @@ def build_contract(contract_path):
         Path(contract_path).parent,
         rebuild_all=False,
         contract_name=Path(contract_path).name,
-        install_dependencies_silently=True
+        install_dependencies_silently=True,
     )
 
 
@@ -53,8 +51,14 @@ def test_add_extra_balance():
     """
     Adds extra balance to the test account
     """
-    prev_account_id = api.create_account(f"{randomname.get_name()}.testnet", ['autogenerate-new-keypair', 'save-to-legacy-keychain', 'network-config', 'testnet', 'create'])
-    new_account_id = api.create_account(f"{randomname.get_name()}.testnet", ['autogenerate-new-keypair', 'save-to-legacy-keychain', 'network-config', 'testnet', 'create'])
+    prev_account_id = api.create_account(
+        f"{randomname.get_name()}.testnet",
+        ["autogenerate-new-keypair", "save-to-legacy-keychain", "network-config", "testnet", "create"],
+    )
+    new_account_id = api.create_account(
+        f"{randomname.get_name()}.testnet",
+        ["autogenerate-new-keypair", "save-to-legacy-keychain", "network-config", "testnet", "create"],
+    )
     api.transfer_amount(prev_account_id, new_account_id, 9.9)
     return api.local_keychain_account_ids()[0]
 
@@ -433,9 +437,7 @@ def promise_batch_action_deploy_contract(promise_index, code):
     pass
 
 
-def promise_batch_action_function_call(
-    promise_index, function_name, arguments, amount, gas
-):
+def promise_batch_action_function_call(promise_index, function_name, arguments, amount, gas):
     """
     Mock function for near_promise_batch_action_function_call.
     :param promise_index: Promise index.
@@ -447,9 +449,7 @@ def promise_batch_action_function_call(
     pass
 
 
-def promise_batch_action_function_call_weight(
-    promise_index, function_name, arguments, amount, gas, weight
-):
+def promise_batch_action_function_call_weight(promise_index, function_name, arguments, amount, gas, weight):
     """
     Mock function for near_promise_batch_action_function_call_weight.
     :param promise_index: Promise index.
