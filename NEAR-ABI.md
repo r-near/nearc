@@ -85,7 +85,7 @@ def storage_read(key: str | bytes) -> bytes | None
 def storage_read_result(key: str | bytes) -> (int, bytes | None)
 def storage_remove(key: str | bytes) -> bytes | None
 def storage_remove_result(key: str | bytes) -> (int, bytes | None)
-def storage_has_key(key: str | bytes) -> int
+def storage_has_key(key: str | bytes) -> bool
 def storage_iter_prefix(prefix: str | bytes) -> int
 def storage_iter_range(start: str | bytes, end: str | bytes) -> int
 def storage_iter_next(iterator_id: int) -> (bytes | None, bytes | None)
