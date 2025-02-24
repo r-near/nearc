@@ -79,13 +79,17 @@ def promise_result_as_str(result_idx: int) -> (int, str)
 def promise_return(promise_id: int) -> None
 
 # Storage API
-def storage_write(key: str | bytes, value: str | bytes) -> (int, bytes | None)
-def storage_read(key: str | bytes) -> (int, bytes | None)
-def storage_remove(key: str | bytes) -> (int, bytes | None)
+def storage_write(key: str | bytes, value: str | bytes) -> bytes | None
+def storage_write_result(key: str | bytes, value: str | bytes) -> (int, bytes | None)
+def storage_read(key: str | bytes) -> bytes | None
+def storage_read_result(key: str | bytes) -> (int, bytes | None)
+def storage_remove(key: str | bytes) -> bytes | None
+def storage_remove_result(key: str | bytes) -> (int, bytes | None)
 def storage_has_key(key: str | bytes) -> int
 def storage_iter_prefix(prefix: str | bytes) -> int
 def storage_iter_range(start: str | bytes, end: str | bytes) -> int
-def storage_iter_next(iterator_id: int) -> (int, bytes | None, bytes | None)
+def storage_iter_next(iterator_id: int) -> (bytes | None, bytes | None)
+def storage_iter_next_result(iterator_id: int) -> (int, bytes | None, bytes | None)
 
 # Validator API
 def validator_stake(account_id: str) -> int
