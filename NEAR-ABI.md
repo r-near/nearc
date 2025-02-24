@@ -25,7 +25,6 @@ def signer_account_pk() -> bytes
 def predecessor_account_id() -> str
 def input() -> bytes
 def input_as_str() -> str
-def block_index() -> int
 def block_height() -> int
 def block_timestamp() -> int
 def epoch_height() -> int
@@ -80,16 +79,9 @@ def promise_return(promise_id: int) -> None
 
 # Storage API
 def storage_write(key: str | bytes, value: str | bytes) -> bytes | None
-def storage_write_result(key: str | bytes, value: str | bytes) -> (int, bytes | None)
 def storage_read(key: str | bytes) -> bytes | None
-def storage_read_result(key: str | bytes) -> (int, bytes | None)
 def storage_remove(key: str | bytes) -> bytes | None
-def storage_remove_result(key: str | bytes) -> (int, bytes | None)
 def storage_has_key(key: str | bytes) -> bool
-def storage_iter_prefix(prefix: str | bytes) -> int
-def storage_iter_range(start: str | bytes, end: str | bytes) -> int
-def storage_iter_next(iterator_id: int) -> (bytes | None, bytes | None)
-def storage_iter_next_result(iterator_id: int) -> (int, bytes | None, bytes | None)
 
 # Validator API
 def validator_stake(account_id: str) -> int

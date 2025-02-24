@@ -164,14 +164,6 @@ def input_as_str():
     return ""
 
 
-def block_index():
-    """
-    Mock function for near_block_index.
-    :return: Placeholder integer.
-    """
-    return 0
-
-
 def block_height():
     """
     Mock function for near_block_height.
@@ -588,7 +580,7 @@ def storage_write(key, value):
     :param value: Value.
     :return: Placeholder tuple.
     """
-    return (0, b"")
+    return b""
 
 
 def storage_read(key):
@@ -597,7 +589,7 @@ def storage_read(key):
     :param key: Key.
     :return: Placeholder tuple.
     """
-    return (0, b"")
+    return b""
 
 
 def storage_remove(key):
@@ -606,7 +598,7 @@ def storage_remove(key):
     :param key: Key.
     :return: Placeholder tuple.
     """
-    return (0, b"")
+    return b""
 
 
 def storage_has_key(key):
@@ -615,35 +607,7 @@ def storage_has_key(key):
     :param key: Key.
     :return: Placeholder integer.
     """
-    return 0
-
-
-def storage_iter_prefix(prefix):
-    """
-    Mock function for near_storage_iter_prefix.
-    :param prefix: Prefix.
-    :return: Placeholder integer.
-    """
-    return 0
-
-
-def storage_iter_range(start, end):
-    """
-    Mock function for near_storage_iter_range.
-    :param start: Start key.
-    :param end: End key.
-    :return: Placeholder integer.
-    """
-    return 0
-
-
-def storage_iter_next(iterator_id):
-    """
-    Mock function for near_storage_iter_next.
-    :param iterator_id: Iterator ID.
-    :return: Placeholder tuple.
-    """
-    return (0, b"", b"")
+    return False
 
 
 # Validator API
