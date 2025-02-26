@@ -15,6 +15,7 @@ DATA_IMAGE_SVG_NEAR_ICON = "data:image/svg+xml,%3Csvg xmlns='http:#www.w3.org/20
 GAS_FOR_RESOLVE_TRANSFER = from_tgas(5)
 GAS_FOR_FT_TRANSFER_CALL = from_tgas(30)
 
+STATE_STORAGE_KEY = "STATE"
 
 def storage_byte_cost():
     return 10000000000000000000
@@ -57,7 +58,7 @@ def write_str(key, value):
 
 
 def get_account_balance(account_id):
-    balance_str = read_str(f"token.accounts.{account_id}")
+    balance_str = read_str(f"{STATE_STORAGE_KEY}.accounts.{account_id}")
     return int(balance_str) if balance_str else None
 
 
@@ -66,31 +67,32 @@ def set_account_balance(account_id, balance):
     assert balance >= 0
     zero_pad = "0" * (39 - len(str(balance)))
     prev_balance_str = write_str(
-        f"token.accounts.{account_id}", zero_pad + str(balance)
+        f"{STATE_STORAGE_KEY}.accounts.{account_id}", zero_pad + str(balance)
     )  # this ensures all account balances consume the same amount of storage
     return int(prev_balance_str) if prev_balance_str else None
 
 
 def remove_account(account_id):
-    near.storage_remove(f"token.accounts.{account_id}")
+    near.storage_remove(f"{STATE_STORAGE_KEY}.accounts.{account_id}")
 
 
 def emit_event(event, data):
     near.log_utf8("EVENT_JSON:" + json.dumps({"standard": "nep141", "version": "1.0.0", "event": event, "data": data}))
+    
 
 
 # todo: check if contract has been initialized (except when this is the init call)
 def near_wrap(fn):
     def wrapped_fn():
-        token_state_str = read_str("token")
-        token_state = json.loads(token_state_str) if token_state_str is not None else {}
-        near.log_utf8(f"near_wrap({fn.__name__}): token state before function call: {token_state}")
+        state_str = read_str(STATE_STORAGE_KEY)
+        state = json.loads(state_str) if state_str is not None else {}
+        near.log_utf8(f"near_wrap({fn.__name__}): token state before function call: {state}")
         args = json.loads(near.input().decode("utf-8"))
         near.log_utf8(f"near_wrap({fn.__name__}): args {args}")
-        args["state"] = token_state
+        args["state"] = state
         return_value = fn(**args)
-        near.log_utf8(f"near_wrap({fn.__name__}): token state after function call {token_state}")
-        write_str("token", json.dumps(token_state))
+        near.log_utf8(f"near_wrap({fn.__name__}): token state after function call {state}")
+        write_str(STATE_STORAGE_KEY, json.dumps(state))
         if return_value is not None:
             near.log_utf8(f"near_wrap({fn.__name__}): returning value {return_value}")
             near.value_return(return_value)
@@ -118,7 +120,7 @@ def measure_account_storage_usage():
 
 def internal_new(state, owner_id, total_supply, metadata_json):
     near.log_utf8(f"internal_new({state}, {owner_id}, {total_supply}, {metadata_json}")
-    if near.storage_has_key("token"):
+    if near.storage_has_key(STATE_STORAGE_KEY):
         near.panic_utf8("Already initialized")
     state["total_supply"] = "0"
     state["account_storage_usage"] = str(measure_account_storage_usage())
