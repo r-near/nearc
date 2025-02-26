@@ -464,7 +464,7 @@ def call_method(
     account_id,
     method_name,
     input,
-    attached_deposit=0,
+    attached_deposit="0 NEAR",
     install_dependencies_silently=False,
 ):
     check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
@@ -489,7 +489,7 @@ def call_method(
         "prepaid-gas",
         "300 Tgas",
         "attached-deposit",
-        f"{attached_deposit} NEAR",
+        attached_deposit,
         "sign-as",
         account_id,
         "network-config",
@@ -501,7 +501,6 @@ def call_method(
     print(stderr)
     tx_id = re.search(r"Transaction ID: (\w+)", stderr).group(1)
     result, gas_burnt, gas_profile = get_tx_data(tx_id, account_id)
-    print(f"gas_burnt: {gas_burnt}, gas_profile: {gas_profile}")
     with open(f"gas-profile-report.md", "a") as f:
         f.write(f"## `near-py-tool` test run gas statistics\n")
         f.write(f"### {method_name}({input})\n")

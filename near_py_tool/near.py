@@ -5,7 +5,7 @@ import randomname
 import near_py_tool.api as api
 
 
-def test_method(contract_path, method_name, input, attached_deposit=0):
+def test_method(contract_path, method_name, input, attached_deposit="0 NEAR", skip_deploy=False):
     """
     Builds & deploys the smart contract from the current python file and then calls the specified method with the specified input
     :param name: method name
@@ -14,24 +14,28 @@ def test_method(contract_path, method_name, input, attached_deposit=0):
     This is no-op in the modnear.c implementation which gets compiled into WASM file
     """
     account_id = api.local_keychain_account_ids()[0]
-    print(f"Path(contract_path): {Path(contract_path)} Path(contract_path).name: {Path(contract_path).name}")
-    api.deploy(
-        Path(contract_path).parent,
-        account_id=account_id,
-        contract_name=Path(contract_path).name,
-        extra_args=[
-            "without-init-call",
-            "network-config",
-            "testnet",
-            "sign-with-legacy-keychain",
-            "send",
-        ],
-        install_dependencies_silently=True,
-    )
+    if not skip_deploy:
+        print(f"Path(contract_path): {Path(contract_path)} Path(contract_path).name: {Path(contract_path).name}")
+        api.deploy(
+            Path(contract_path).parent,
+            account_id=account_id,
+            contract_name=Path(contract_path).name,
+            extra_args=[
+                "without-init-call",
+                "network-config",
+                "testnet",
+                "sign-with-legacy-keychain",
+                "send",
+            ],
+            install_dependencies_silently=True,
+        )
     result, gas_burnt, gas_profile = api.call_method(
         account_id, method_name, input, attached_deposit=attached_deposit, install_dependencies_silently=True
     )
-    print(f"test_method({contract_path}, {method_name}, {input}): {result}, {gas_burnt / 1e12} Tgas")
+    print(f"test_method({contract_path}, {method_name}, {input}):")
+    print(f"  result: {result}")
+    print(f"  gas_burnt: {gas_burnt / 1e12} Tgas")
+    print(f"  gas_profile: {gas_profile}")
     return result, gas_burnt
 
 
@@ -333,6 +337,13 @@ def log_utf8(msg):
     """
     Mock function for near_log_utf8.
     :param msg: Log message.
+    """
+    pass
+
+
+def log(msg):
+    """
+    Alias for log_utf8()
     """
     pass
 
