@@ -70,6 +70,14 @@ Getting started
 - run `near-py-tool create-dev-account` to create a testnet account if you don't have one already
 - run `near-py-tool deploy` to deploy the smart contract
 
+Examples
+--------
+
+While there is still plenty of work ahead of us, there are already some small yet useful apps implemented using this project:
+
+- The smart contract that guards 3000 NEAR and gives away 2 NEAR per user and prevents double-spend: https://github.com/frol/1t-agents-fundme-agent
+- The smart contract that guards 50 NEAR until it is jailbreaked: https://github.com/frol/neardevnewsletter-issue50-quest/tree/main/contract
+- Demo Web4 contract in Python: https://github.com/frol/near-web4-demo-py
 
 TODO
 ----
