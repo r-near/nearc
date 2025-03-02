@@ -7,6 +7,7 @@ import shutil
 import sys
 from importlib.resources import files
 from pathlib import Path
+from typing import Set
 
 import click
 import requests
