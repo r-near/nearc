@@ -1,51 +1,67 @@
 import ast
-import base64
-import json
 import os
-import re
 import shutil
 import sys
 from importlib.resources import files
 from pathlib import Path
+from typing import Dict, List, Set
 
 import click
-import requests
 import toml
 
-import near_py_tool.api as api
-from near_py_tool.run_command import (
-    check_build_dependencies,
-    check_deploy_dependencies,
-    is_command_available,
-    run_build_command,
-    run_command,
-)
+from near_py_tool.run_command import is_command_available, run_command
+
+# Constants for MicroPython modules and packages
+MPY_MODULES = {"array", "builtins", "json", "os", "random", "struct", "sys"}
+MPY_LIB_PACKAGES = {"aiohttp", "cbor2", "iperf3", "pyjwt", "requests"}
+MPY_STDLIB_PACKAGES = [
+    "binascii", "contextlib", "fnmatch", "hashlib-sha224", "hmac", "keyword", 
+    "os-path", "pprint", "stat", "tempfile", "types", "warnings", "__future__", 
+    "bisect", "copy", "functools", "hashlib-sha256", "html", "locale", "pathlib",
+    "quopri", "string", "textwrap", "unittest", "zlib", "abc", "cmd", "curses.ascii",
+    "gzip", "hashlib-sha384", "inspect", "logging", "pickle", "random", "struct",
+    "threading", "unittest-discover", "argparse", "collections", "datetime", "hashlib",
+    "hashlib-sha512", "io", "operator", "pkg_resources", "shutil", "tarfile", "time",
+    "uu", "base64", "collections-defaultdict", "errno", "hashlib-core", "heapq",
+    "itertools", "os", "pkgutil", "ssl", "tarfile-write", "traceback", "venv"
+]
+NEAR_MODULE_NAME = "near"
 
 
-def get_near_exports_from_file(file_path):
+def get_near_exports_from_file(file_path: str) -> Set[str]:
+    """Extract functions decorated with NEAR export decorators."""
     with open(file_path, "r") as file:
-        tree = ast.parse(file.read(), filename=file_path)
+        content = file.read()
+        tree = ast.parse(content, filename=file_path)
 
-    near_exports = set()
+    # Set of potential decorators that might be NEAR exports
+    near_export_decorators = {"export", "view", "call", "init", "callback", "near.export"}
+    
+    # Set to store exported function names
+    exports = set()
+    
+    # Find all decorated functions
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef):
-            for d in node.decorator_list:
-                if (
-                    isinstance(d, ast.Attribute)
-                    and isinstance(d.value, ast.Name)
-                    and d.attr == "export"
-                    and d.value.id == "near"
-                ):
-                    near_exports.add(node.name)
-        if isinstance(node, ast.FunctionDef) and any(
-            isinstance(d, ast.Name) and d.id == "near.export" for d in node.decorator_list
-        ):
-            near_exports.add(node.name)
+        if isinstance(node, ast.FunctionDef) and node.decorator_list:
+            for decorator in node.decorator_list:
+                decorator_name = None
+                
+                # Handle different decorator patterns
+                if isinstance(decorator, ast.Name):
+                    decorator_name = decorator.id
+                elif isinstance(decorator, ast.Attribute) and isinstance(decorator.value, ast.Name):
+                    if decorator.value.id == "near" and decorator.attr == "export":
+                        decorator_name = "near.export"
+                
+                # If it's a NEAR export decorator, add the function name
+                if decorator_name in near_export_decorators:
+                    exports.add(node.name)
+                    break
+    
+    return exports
 
-    return near_exports
 
-
-def get_imports_from_file(file_path):
+def get_imports_from_file(file_path: Path) -> Set[str]:
     """Extract imported modules from a Python file."""
     with open(file_path, "r") as file:
         tree = ast.parse(file.read(), filename=file_path)
@@ -56,283 +72,256 @@ def get_imports_from_file(file_path):
             for alias in node.names:
                 imports.add(alias.name)
         elif isinstance(node, ast.ImportFrom):
-            module = node.module
-            if module:
-                imports.add(module)
+            if node.module:
+                imports.add(node.module)
+    
+    # Remove `near_py_tool` if it exists
+    imports.remove("near_py_tool")
 
     return imports
 
 
-def has_compiled_extensions(package_name, package_path):
-    native_library_paths = []
-    for ext in ["so", "pyd", "dll", "dylib"]:
-        native_library_paths.append(package_path.rglob(f"*.{ext}"))
-    return len(native_library_paths) == 0
-
-
-def is_mpy_module(name):
-    mpy_modules = ["array", "builtins", "json", "os", "random", "struct", "sys"]
-    return name in mpy_modules
-
-
-def is_mpy_lib_package(name):
-    mpy_lib_packages = ["aiohttp", "cbor2", "iperf3", "pyjwt", "requests"]
-    return name in mpy_lib_packages
-
-
-mpy_stdlib_packages = [
-    "binascii",
-    "contextlib",
-    "fnmatch",
-    "hashlib-sha224",
-    "hmac",
-    "keyword",
-    "os-path",
-    "pprint",
-    "stat",
-    "tempfile",
-    "types",
-    "warnings",
-    "__future__",
-    "bisect",
-    "copy",
-    "functools",
-    "hashlib-sha256",
-    "html",
-    "locale",
-    "pathlib",
-    "quopri",
-    "string",
-    "textwrap",
-    "unittest",
-    "zlib",
-    "abc",
-    "cmd",
-    "curses.ascii",
-    "gzip",
-    "hashlib-sha384",
-    "inspect",
-    "logging",
-    "pickle",
-    "random",
-    "struct",
-    "threading",
-    "unittest-discover",
-    "argparse",
-    "collections",
-    "datetime",
-    "hashlib",
-    "hashlib-sha512",
-    "io",
-    "operator",
-    "pkg_resources",
-    "shutil",
-    "tarfile",
-    "time",
-    "uu",
-    "base64",
-    "collections-defaultdict",
-    "errno",
-    "hashlib-core",
-    "heapq",
-    "itertools",
-    "os",
-    "pkgutil",
-    "ssl",
-    "tarfile-write",
-    "traceback",
-    "venv",
-]
-
-near_module_name = "near"
-
-
-def is_external_package(name):
+def is_external_package(name: str) -> bool:
+    """Determine if a package is external (not in MicroPython)."""
     return (
-        not is_mpy_module(name)
-        and not is_mpy_lib_package(name)
-        and name not in mpy_stdlib_packages
-        and name != near_module_name
+        name not in MPY_MODULES
+        and name not in MPY_LIB_PACKAGES
+        and name not in MPY_STDLIB_PACKAGES
+        and name != NEAR_MODULE_NAME
     )
 
 
-def generate_manifest(contract_path, package_paths, manifest_path, excluded_stdlib_packages):
-    with open(manifest_path, "w") as o:
-        o.write("# THIS FILE IS GENERATED, DO NOT EDIT\n\n")
-        for module in mpy_stdlib_packages:
+def generate_manifest(
+    contract_path: Path, 
+    venv_path: Path,
+    imports: Set[str],
+    manifest_path: Path, 
+    excluded_stdlib_packages: List[str]
+):
+    """Generate the MicroPython manifest file."""
+    with open(manifest_path, "w") as f:
+        f.write("# THIS FILE IS GENERATED, DO NOT EDIT\n\n")
+        
+        # Add stdlib packages
+        for module in MPY_STDLIB_PACKAGES:
             if module not in excluded_stdlib_packages:
-                o.write(f'require("{module}")\n')
+                f.write(f'require("{module}")\n')
+        
+        # Add typing modules
         for mod in ["typing", "typing_extensions"]:
-            o.write(f'module("{mod}.py", base_path="$(PORT_DIR)/extra/typing")\n')
-        for module, path in package_paths.items():
-            if is_mpy_lib_package(module):
-                o.write(f'require("{module}")\n')
-            elif not is_mpy_module(module):
-                base_path = str(path.parent.relative_to(manifest_path.parent)).replace("\\", "/")
-                o.write(f'package("{module}", base_path="{base_path}")\n')
-        o.write(f'module("{contract_path.name}", base_path="..")\n')
+            f.write(f'module("{mod}.py", base_path="$(PORT_DIR)/extra/typing")\n')
+        
+        # Find site-packages directory
+        site_packages = find_site_packages_dir(venv_path)
+        if not site_packages:
+            click.echo(click.style(
+                f"Error: Could not find site-packages directory in {venv_path}",
+                fg="bright_red"
+            ))
+            sys.exit(1)
+            
+        # Add external packages
+        for module_name in imports:
+            if is_external_package(module_name):
+                # Get the base module name (before the first dot)
+                base_module = module_name.split('.')[0]
+                
+                # Try to find the module directory
+                module_dir = site_packages / base_module
+                if module_dir.exists() and module_dir.is_dir():
+                    # Calculate relative path from manifest to the package
+                    rel_path = os.path.relpath(site_packages, manifest_path.parent)
+                    # Use forward slashes for consistency across platforms
+                    base_path = str(Path(rel_path)).replace("\\", "/")
+                    f.write(f'package("{base_module}", base_path="{base_path}")\n')
+                elif (site_packages / f"{base_module}.py").exists():
+                    # Handle single-file modules
+                    rel_path = os.path.relpath(site_packages, manifest_path.parent)
+                    base_path = str(Path(rel_path)).replace("\\", "/")
+                    f.write(f'module("{base_module}.py", base_path="{base_path}")\n')
+                else:
+                    click.echo(click.style(
+                        f"Warning: Could not find module {base_module} in {site_packages}",
+                        fg="bright_yellow"
+                    ))
+        
+        # Add the contract itself
+        f.write(f'module("{contract_path.name}", base_path="..")\n')
 
 
-def generate_export_wrappers(contract_path, exports, export_wrappers_path):
-    with open(export_wrappers_path, "w") as o:
-        o.write("/* THIS FILE IS GENERATED, DO NOT EDIT */\n\n")
-        o.write("void run_frozen_fn(const char *file_name, const char *fn_name);\n\n")
+def generate_export_wrappers(contract_path: Path, exports: List[str], export_wrappers_path: Path):
+    """Generate C export wrappers for the NEAR contract."""
+    with open(export_wrappers_path, "w") as f:
+        f.write("/* THIS FILE IS GENERATED, DO NOT EDIT */\n\n")
+        f.write("void run_frozen_fn(const char *file_name, const char *fn_name);\n\n")
+        
         for export in exports:
-            o.write(f'void {export}() \u007b\n  run_frozen_fn("{contract_path.name}", "{export}");\n\u007d\n\n')
+            f.write(f'void {export}() {{\n  run_frozen_fn("{contract_path.name}", "{export}");\n}}\n\n')
 
 
-def get_venv_package_paths(file_path, venv_path):
-    """Get paths of all packages imported by a Python file."""
-    imports = get_imports_from_file(file_path)
-    package_paths = {}
-    glob_pattern_base = (
-        "lib/site-packages" if (venv_path / "lib" / "site-packages").is_dir() else "lib/python*.*/site-packages"
-    )
-    for module_name in imports:
-        if is_external_package(module_name):
-            paths = list(venv_path.glob(f"{glob_pattern_base}/{module_name}"))
-            if len(paths) == 0:
-                click.echo(
-                    f"Warning: module {module_name} path wasn't resolved; is it installed in the current venv at {venv_path}?"
-                )
-            elif len(paths) > 1:
-                click.echo(f"Warning: module {module_name} has multiple candidate paths: {paths}")
-            for path in paths:
-                package_paths[module_name] = path
-    return package_paths
+def find_site_packages_dir(venv_path: Path) -> Path:
+    """Find the site-packages directory in a virtual environment created by uv."""
+    # uv typically uses a simpler structure than standard venv
+    site_packages = venv_path / "lib" / "site-packages"  # Unix/macOS
+    
+    if site_packages.is_dir():
+        return site_packages
+        
+    # Windows path
+    site_packages = venv_path / "Lib" / "site-packages"
+    if site_packages.is_dir():
+        return site_packages
+    
+    # If the standard paths don't exist, try to find it with a more general approach
+    patterns = [
+        "lib/python*/site-packages",         # Unix fallback
+        "Lib/Python*/site-packages"          # Windows fallback
+    ]
+    
+    for pattern in patterns:
+        matches = list(venv_path.glob(pattern))
+        if matches:
+            return matches[0]
+    
+    return None
 
 
-def get_excluded_stdlib_packages(project_path):
+def get_excluded_stdlib_packages(project_path: Path) -> List[str]:
+    """Get excluded stdlib packages from pyproject.toml."""
     pyproject_path = project_path / "pyproject.toml"
     if pyproject_path.is_file():
         with open(pyproject_path, "r") as file:
             pyproject_data = toml.load(file)
         return pyproject_data.get("tool", {}).get("near-py-tool", {}).get("exclude-micropython-stdlib-packages", [])
-    else:
-        return []
-
-
-def install_pyproject_dependencies(project_path, venv_path):
-    pyproject_path = project_path / "pyproject.toml"
-    if pyproject_path.is_file():
-        with open(pyproject_path, "r") as file:
-            pyproject_data = toml.load(file)
-        for package in pyproject_data.get("project", {}).get("dependencies", {}):
-            click.echo(f"Installing {package} into {venv_path}...")
-            pip_path = None
-            for path in [
-                venv_path / "bin" / "pip",
-                venv_path / "bin" / "pip.exe",
-                venv_path / "Scripts" / "pip.exe",
-            ]:
-                if path.is_file():
-                    pip_path = path
-            if pip_path is None:
-                click.echo(
-                    click.style(
-                        f"Error: build Python venv doesn't have pip installed",
-                        fg="bright_red",
-                    )
-                )
-                sys.exit(1)
-            run_command(
-                [pip_path, "install", package, "--disable-pip-version-check"],
-                cwd=project_path,
-            )
+    return []
 
 
 def build(
-    project_dir,
-    rebuild_all,
-    contract_name="contract.py",
-    install_dependencies_silently=False,
+    project_dir: str,
+    rebuild_all: bool = False,
+    contract_name: str = "contract.py",
 ):
+    """Build a NEAR Python contract."""
+    # Resolve paths
     project_path = Path(project_dir).resolve()
     project_name = project_path.name
     build_path = project_path / "build"
-    mpy_cross_build_path = project_path / "build" / "mpy-cross"
-    venv_path = build_path / ".venv"
+    mpy_cross_build_path = build_path / "mpy-cross"
+    contract_path = project_path / contract_name
+    venv_path = project_path / ".venv"
+    
+    # Get asset paths
     mpy_cross_path = files("near_py_tool") / "assets" / "micropython" / "mpy-cross"
     mpy_port_path = files("near_py_tool") / "assets" / "micropython" / "ports" / "webassembly-near"
-    contract_path = project_path / contract_name
-    if not contract_path.is_file():
-        click.echo(click.style(f"Error: contract file {contract_path} doesn't exist", fg="bright_red"))
-        sys.exit(1)
 
+    # Check that emcc command exists
+    
+    
+    # Verify contract exists
+    if not contract_path.is_file():
+        click.echo(click.style(f"Error: Contract file {contract_path} doesn't exist", fg="bright_red"))
+        sys.exit(1)
+    
+    # Verify .venv exists
+    if not venv_path.is_dir():
+        click.echo(
+            click.style(
+                f"Error: Virtual environment not found at {venv_path}.\n"
+                f"Please run 'uv init' in your project directory to create it.",
+                fg="bright_red"
+            )
+        )
+        sys.exit(1)
+    
+    # Handle rebuild_all flag
     if rebuild_all:
-        click.echo(f"Removing build directory {build_path} to perform a clean build")
+        click.echo(f"Removing build directory {build_path} for clean build")
         try:
             shutil.rmtree(build_path)
-        except Exception:
-            pass
-
+        except Exception as e:
+            click.echo(f"Warning: Failed to remove build directory: {e}")
+    
+    # Ensure build directory exists
     build_path.mkdir(parents=True, exist_ok=True)
-
-    check_build_dependencies(build_path, install_dependencies_silently=install_dependencies_silently)
-
-    # click.echo(f"Running `uv sync` in {project_path}...")
-    # run_build_command(build_path, ['uv', "sync"], cwd=project_path)
-
-    if not venv_path.is_dir():
-        click.echo(f"Creating a venv in {venv_path}...")
-        run_command(
-            [
-                "python" if is_command_available("python") else "python3",
-                "-m",
-                "venv",
-                venv_path,
-            ],
-            cwd=project_path,
-        )
-
-    install_pyproject_dependencies(project_path, venv_path)
-
-    package_paths = get_venv_package_paths(contract_path, venv_path)
-
-    for module, path in package_paths.items():
-        if has_compiled_extensions(module, path):
-            click.echo(
-                click.style(
-                    f"Warning: required module {module} at {path} has compiled extensions and might not work correctly in WASM environment",
-                    fg="bright_red",
-                )
+    
+    click.echo(f"Using virtual environment at {venv_path}")
+    
+    # Check that uv is available
+    if not shutil.which("uv"):
+        click.echo(
+            click.style(
+                "Warning: 'uv' not found in PATH. It's recommended for managing Python dependencies.",
+                fg="bright_yellow"
             )
-
+        )
+    
+    # Get imports and exports from contract
+    imports = get_imports_from_file(contract_path)
     exports = list(get_near_exports_from_file(contract_path))
-    click.echo(f"The contract WASM will export the following methods: {exports}")
-
+    
+    if not exports:
+        click.echo(
+            click.style(
+                "Warning: No NEAR export functions found in the contract. "
+                "The contract will not expose any callable methods.",
+                fg="bright_yellow"
+            )
+        )
+    else:
+        click.echo(f"Found {len(exports)} NEAR export methods: {', '.join(exports)}")
+    
+    # Generate build files
     excluded_stdlib_packages = get_excluded_stdlib_packages(project_path)
-    print(f"Excluding the following MicroPython stdlib packages from the build: {excluded_stdlib_packages}")
-    print(
-        f"(this list can be adjusted via [tool.near-py-tool] exclude-micropython-stdlib-packages setting in pyproject.toml)"
-    )
-
+    if excluded_stdlib_packages:
+        click.echo(f"Excluding MicroPython stdlib packages: {', '.join(excluded_stdlib_packages)}")
+    
+    # Generate manifest and export wrappers
+    click.echo("Generating MicroPython manifest...")
     generate_manifest(
         contract_path,
-        package_paths,
+        venv_path,
+        imports,
         build_path / "manifest.py",
         excluded_stdlib_packages,
     )
-    generate_export_wrappers(contract_path, exports, build_path / "export_wrappers.c")
-    try:
-        os.unlink(build_path / "frozen_content.c")  # force frozen content rebuilt every time
-    except Exception:
-        pass
-
-    contract_wasm_path = build_path / Path(
-        contract_name if contract_name != "contract.py" else project_name
-    ).with_suffix(".wasm")
-    run_build_command(
-        build_path,
-        ["make", "-C", mpy_cross_path, f"BUILD={mpy_cross_build_path}"],
-        cwd=project_path,
+    
+    click.echo("Generating export wrappers...")
+    generate_export_wrappers(
+        contract_path, 
+        exports, 
+        build_path / "export_wrappers.c"
     )
-    run_build_command(
-        build_path,
+    
+    # Force rebuild of frozen content
+    frozen_content_path = build_path / "frozen_content.c"
+    if frozen_content_path.exists():
+        frozen_content_path.unlink()
+    
+    # Determine output WASM path
+    if contract_name != "contract.py":
+        output_name = Path(contract_name).stem
+    else:
+        output_name = project_name
+        
+    contract_wasm_path = build_path / f"{output_name}.wasm"
+    
+    # Build mpy-cross if needed
+    mpy_cross_exe = mpy_cross_build_path / "mpy-cross"
+    if not mpy_cross_exe.exists() or rebuild_all:
+        click.echo("Building MicroPython cross-compiler...")
+        mpy_cross_build_path.mkdir(parents=True, exist_ok=True)
+        run_command(
+            ["make", "-C", str(mpy_cross_path), f"BUILD={mpy_cross_build_path}"],
+            cwd=project_path,
+        )
+    
+    # Build the WASM contract
+    click.echo("Building WASM contract...")
+    run_command(
         [
             "make",
             "-C",
-            mpy_port_path,
+            str(mpy_port_path),
             f"BUILD={build_path}",
             f"MICROPY_MPYCROSS={mpy_cross_build_path}/mpy-cross",
             f"MICROPY_MPYCROSS_DEPENDENCY={mpy_cross_build_path}/mpy-cross",
@@ -343,168 +332,19 @@ def build(
         ],
         cwd=project_path,
     )
-
-    click.echo(f"Contract WASM file was build successfully and is located at {contract_wasm_path}")
-
+    
+    # Check if the build was successful
+    if contract_wasm_path.exists():
+        wasm_size = contract_wasm_path.stat().st_size / 1024  # Size in KB
+        click.echo(click.style(
+            f"✓ Contract built successfully: {contract_wasm_path} ({wasm_size:.1f} KB)",
+            fg="green"
+        ))
+    else:
+        click.echo(click.style(
+            f"× Failed to build contract. Check the errors above.",
+            fg="bright_red"
+        ))
+        sys.exit(1)
+        
     return contract_wasm_path
-
-
-def is_account_id_available(account_id, network):
-    return (
-        run_command(
-            [
-                "near",
-                "account",
-                "view-account-summary",
-                account_id,
-                "network-config",
-                network,
-                "now",
-            ],
-            check=False,
-        )
-        != 0
-    )
-
-
-def create_account(account_id, extra_args, install_dependencies_silently=False):
-    check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
-    cmdline = [
-        "near",
-        "account",
-        "create-account",
-        "sponsor-by-faucet-service",
-        account_id,
-    ]
-    cmdline.extend([str(arg) for arg in extra_args])
-    run_command(cmdline)
-    return account_id
-
-
-def transfer_amount(from_account_id, to_account_id, amount):
-    run_command(["near", "send", from_account_id, to_account_id, str(amount)])
-
-
-def deploy(
-    project_dir,
-    rebuild_all=False,
-    account_id="*",
-    extra_args=[],
-    contract_name="contract.py",
-    install_dependencies_silently=False,
-):
-    check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
-    project_path = Path(project_dir).resolve()
-    project_name = project_path.name
-    wasm_path = (
-        project_path
-        / "build"
-        / Path(contract_name if contract_name != "contract.py" else project_name).with_suffix(".wasm")
-    )
-    build(
-        project_path,
-        rebuild_all,
-        contract_name=contract_name,
-        install_dependencies_silently=install_dependencies_silently,
-    )
-    if account_id == "*":
-        account_id = local_keychain_account_ids()[0]
-    cmdline = ["near", "contract", "deploy", account_id, "use-file", wasm_path]
-    cmdline.extend([str(arg) for arg in extra_args])
-    run_command(cmdline, cwd=project_path)
-
-
-def local_keychain_account_ids():
-    try:
-        accounts_path = Path("~/.near-credentials/accounts.json").expanduser().resolve()
-        with open(accounts_path, "r") as f:
-            d = json.load(f)
-            return [v["account_id"] for v in d]
-    except:
-        pass
-
-
-def get_tx_data(tx_id, account_id):
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "jsonrpc": "2.0",
-        "id": "dontcare",
-        "method": "tx",
-        "params": [tx_id, account_id],
-    }
-    response = requests.post("https://rpc.testnet.near.org", headers=headers, json=data).json()
-    success_value = base64.b64decode(response.get("result", {}).get("status", {}).get("SuccessValue", ""))
-    success_receipt_id = (
-        response.get("result", {})
-        .get("transaction_outcome", {})
-        .get("outcome", {})
-        .get("status", {})
-        .get("SuccessReceiptId", "")
-    )
-    success_receipt = next(
-        (d for d in response.get("result", {}).get("receipts_outcome", {}) if d.get("id") == success_receipt_id),
-        {},
-    )
-    gas_burnt = success_receipt.get("outcome", {}).get("gas_burnt", 0)
-    gas_profile = {
-        cost["cost"]: cost["gas_used"]
-        for cost in success_receipt.get("outcome", {}).get("metadata", {}).get("gas_profile", {})
-    }
-    return success_value, gas_burnt, gas_profile
-
-
-def format_gas(gas):
-    if gas >= 1e12:
-        return f"{(gas / 1e12):.2f}T"
-    else:
-        return f"{(gas / 1e9):.2f}G"
-
-
-def call_method(
-    account_id,
-    method_name,
-    input,
-    attached_deposit="0 NEAR",
-    install_dependencies_silently=False,
-):
-    check_deploy_dependencies(install_dependencies_silently=install_dependencies_silently)
-    if isinstance(input, dict) or isinstance(input, list):
-        args_type = "json-args"
-        args = json.dumps(input)
-    elif isinstance(input, str):
-        args_type = "text-args"
-        args = input
-    else:
-        args_type = "base64-args"
-        args = base64.b64encode(input)
-    cmdline = [
-        "near",
-        "contract",
-        "call-function",
-        "as-transaction",
-        account_id,
-        method_name,
-        args_type,
-        args,
-        "prepaid-gas",
-        "300 Tgas",
-        "attached-deposit",
-        attached_deposit,
-        "sign-as",
-        account_id,
-        "network-config",
-        "testnet",
-        "sign-with-legacy-keychain",
-        "send",
-    ]
-    exit_code, stdout, stderr = run_command(cmdline, capture_output=True)
-    print(stderr)
-    tx_id = re.search(r"Transaction ID: (\w+)", stderr).group(1)
-    result, gas_burnt, gas_profile = get_tx_data(tx_id, account_id)
-    with open(f"gas-profile-report.md", "a") as f:
-        f.write(f"## `near-py-tool` test run gas statistics\n")
-        f.write(f"### {method_name}({input})\n")
-        f.write(f"- Gas used to execute the receipt (actual contract call): `{format_gas(gas_burnt)}`\n")
-        for k, v in gas_profile.items():
-            f.write(f"  - `{k}`: `{format_gas(int(v))}`\n")
-    return result, gas_burnt, gas_profile

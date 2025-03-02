@@ -9,6 +9,12 @@ Python source files are compiled into the WASM binary via [MicroPython](https://
 command-line options compatible (not all are implemented yet).
 
 
+Development:
+git clone https://github.com/r-near/near-py-tool
+cd near-py-tool
+git submodule update --init near_py_tool/assets/micropython
+git -C near_py_tool/assets/micropython submodule update --init lib/micropython-lib
+
 Dependencies
 ------------
 

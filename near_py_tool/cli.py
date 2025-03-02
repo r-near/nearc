@@ -1,26 +1,35 @@
 import click
-from rich_click import RichGroup
+import os
+import sys
+from pathlib import Path
 
-import near_py_tool.click_utils as click_utils
-from near_py_tool.commands.abi import abi
-from near_py_tool.commands.build import build
-from near_py_tool.commands.create_dev_account import create_dev_account
-from near_py_tool.commands.deploy import deploy
-from near_py_tool.commands.new import new
+from near_py_tool.api import build
 
 
-@click.group(cls=RichGroup, invoke_without_command=True)
-@click.pass_context
-def cli(ctx):
-    """Python NEAR contract build/deploy tool"""
-    click_utils.subcommand_choice(ctx)
+@click.group()
+@click.version_option()
+def cli():
+    """NEAR Python Tool - Build and deploy Python contracts to the NEAR blockchain."""
+    pass
 
 
-cli.add_command(new)
-cli.add_command(build)
-cli.add_command(abi)
-cli.add_command(create_dev_account)
-cli.add_command(deploy)
+@cli.command()
+@click.argument('project_dir', type=click.Path(exists=True, file_okay=False, dir_okay=True), default='.')
+@click.option('--contract', '-c', 'contract_name', default='contract.py', help='Contract file name')
+@click.option('--rebuild-all', is_flag=True, help='Force rebuilding all dependencies')
+def build_contract(project_dir, contract_name, rebuild_all):
+    """Build a NEAR Python contract."""
+    try:
+        output_path = build(
+            project_dir=project_dir,
+            rebuild_all=rebuild_all,
+            contract_name=contract_name
+        )
+        click.echo(f"Contract built successfully at: {output_path}")
+    except Exception as e:
+        click.echo(click.style(f"Error during build: {str(e)}", fg="bright_red"))
+        sys.exit(1)
 
-if __name__ == "__main__":
-    cli(None)
+
+if __name__ == '__main__':
+    cli()
