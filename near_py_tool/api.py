@@ -39,7 +39,7 @@ def get_near_exports_from_file(file_path: str) -> Set[str]:
         tree = ast.parse(content, filename=file_path)
 
     # Track custom decorators that eventually use near.export
-    custom_exporters = set(["export", "view", "call", "init"])
+    custom_exporters = set(["export", "view", "call", "init", "callback"])
     # Track functions that are exported
     near_exports = set()
     
@@ -76,7 +76,7 @@ def get_near_exports_from_file(file_path: str) -> Set[str]:
                      decorator.id == "near.export")):
                     near_exports.add(node.name)
                     break
-                
+
                 # Case 2: Using a custom exporter decorator like @init, @view, etc.
                 if isinstance(decorator, ast.Name) and decorator.id in custom_exporters:
                     near_exports.add(node.name)
