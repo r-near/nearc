@@ -1,0 +1,30 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: release
+    permissions:
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+            submodules: true
+  
+      - name: Initialize MicroPython submodules
+        run: git -C src/nearc/micropython submodule update --init lib/micropython-lib
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build wheels
+        run: uv build
+        
+      - name: Publish to PyPI
+        run: uv publish --trusted-publishing always
