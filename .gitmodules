@@ -1,3 +1,3 @@
 [submodule "src/nearc/micropython"]
 	path = src/nearc/micropython
-	url = https://github.com/past-hypothesis/micropython.git
+	url = https://github.com/past-hypothesis/micropython
