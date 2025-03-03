@@ -10,10 +10,78 @@ import os
 import shutil
 import sys
 import subprocess
+import tomllib
 from pathlib import Path
 from typing import Set, List, Optional
 
 import rich_click as click
+
+MPY_MODULES = {"array", "builtins", "json", "os", "random", "struct", "sys"}
+MPY_LIB_PACKAGES = {"aiohttp", "cbor2", "iperf3", "pyjwt", "requests"}
+MPY_STDLIB_PACKAGES = [
+    "binascii",
+    "contextlib",
+    "fnmatch",
+    "hashlib-sha224",
+    "hmac",
+    "keyword",
+    "os-path",
+    "pprint",
+    "stat",
+    "tempfile",
+    "types",
+    "warnings",
+    "__future__",
+    "bisect",
+    "copy",
+    "functools",
+    "hashlib-sha256",
+    "html",
+    "locale",
+    "pathlib",
+    "quopri",
+    "string",
+    "textwrap",
+    "unittest",
+    "zlib",
+    "abc",
+    "cmd",
+    "curses.ascii",
+    "gzip",
+    "hashlib-sha384",
+    "inspect",
+    "logging",
+    "pickle",
+    "random",
+    "struct",
+    "threading",
+    "unittest-discover",
+    "argparse",
+    "collections",
+    "datetime",
+    "hashlib",
+    "hashlib-sha512",
+    "io",
+    "operator",
+    "pkg_resources",
+    "shutil",
+    "tarfile",
+    "time",
+    "uu",
+    "base64",
+    "collections-defaultdict",
+    "errno",
+    "hashlib-core",
+    "heapq",
+    "itertools",
+    "os",
+    "pkgutil",
+    "ssl",
+    "tarfile-write",
+    "traceback",
+    "venv",
+]
+NEAR_MODULE_NAME = "near"
 
 
 def find_exports(file_path: Path) -> Set[str]:
@@ -89,41 +157,39 @@ def find_imports(file_path: Path) -> Set[str]:
 
 
 def is_micropython_module(module_name: str) -> bool:
-    """
-    Check if a module is included in MicroPython.
-
-    Args:
-        module_name: Name of the module
-
-    Returns:
-        True if the module is part of MicroPython, False otherwise
-    """
-    # MicroPython built-in modules
-    builtin_modules = {
-        "array",
-        "builtins",
-        "json",
-        "os",
-        "random",
-        "struct",
-        "sys",
-        "near",
-    }
-
-    # MicroPython standard library
-    stdlib_modules = {
-        "binascii",
-        "collections",
-        "hashlib",
-        "io",
-        "math",
-        "re",
-        "time",
-        # Many more modules would be listed here...
-    }
-
+    """Check if a module is included in MicroPython."""
     base_module = module_name.split(".")[0]
-    return base_module in builtin_modules or base_module in stdlib_modules
+    return (
+        base_module in MPY_MODULES
+        or base_module in MPY_LIB_PACKAGES
+        or base_module in MPY_STDLIB_PACKAGES
+        or base_module == NEAR_MODULE_NAME
+    )
+
+
+def get_excluded_stdlib_packages(project_path: Path) -> List[str]:
+    """Get excluded stdlib packages from pyproject.toml."""
+    pyproject_path = project_path / "pyproject.toml"
+    excluded_packages = []
+
+    if pyproject_path.is_file():
+        try:
+            with open(pyproject_path, "rb") as file:
+                pyproject_data = tomllib.load(file)
+            excluded_packages = (
+                pyproject_data.get("tool", {})
+                .get("near-py-tool", {})
+                .get("exclude-micropython-stdlib-packages", [])
+            )
+        except (ImportError, Exception) as e:
+            click.echo(
+                click.style(
+                    f"Warning: Could not read exclusions from pyproject.toml: {e}",
+                    fg="yellow",
+                )
+            )
+
+    return excluded_packages
 
 
 def find_site_packages(venv_path: Path) -> Optional[Path]:
@@ -175,41 +241,67 @@ def generate_manifest(
     site_packages = find_site_packages(venv_path)
 
     if not site_packages:
-        click.echo(click.style(f"Error: Could not find site-packages in {venv_path}", fg='red'))
+        click.echo(
+            click.style(f"Error: Could not find site-packages in {venv_path}", fg="red")
+        )
         sys.exit(1)
 
+    # Get excluded packages
+    excluded_stdlib_packages = get_excluded_stdlib_packages(contract_path.parent)
+    if excluded_stdlib_packages:
+        click.echo(
+            f"Excluding MicroPython stdlib packages: {', '.join(excluded_stdlib_packages)}"
+        )
+
     with open(manifest_path, "w") as f:
-        f.write("# Generated manifest for NEAR contract\n\n")
+        f.write("# THIS FILE IS GENERATED, DO NOT EDIT\n\n")
 
-        # Include standard MicroPython modules
-        f.write("# Standard MicroPython modules\n")
-        for module in ["typing", "typing_extensions"]:
-            f.write(f'module("{module}.py", base_path="$(PORT_DIR)/extra/typing")\n')
+        # Add stdlib packages
+        for module in MPY_STDLIB_PACKAGES:
+            if module not in excluded_stdlib_packages:
+                f.write(f'require("{module}")\n')
 
-        # Include external dependencies
-        f.write("\n# External dependencies\n")
+        # Add typing modules
+        f.write("\n# Typing modules\n")
+        for mod in ["typing", "typing_extensions"]:
+            f.write(f'module("{mod}.py", base_path="$(PORT_DIR)/extra/typing")\n')
+
+        # Add external dependencies
+        external_deps_added = False
         for module_name in imports:
             if not is_micropython_module(module_name):
+                if not external_deps_added:
+                    f.write("\n# External dependencies\n")
+                    external_deps_added = True
+
                 # Get base module name (before first dot)
                 base_module = module_name.split(".")[0]
 
-                # Check if it's a directory or single file
+                # Process module
                 module_dir = site_packages / base_module
                 module_file = site_packages / f"{base_module}.py"
 
-                if module_dir.is_dir():
+                if module_dir.is_dir() or module_file.exists():
                     rel_path = os.path.relpath(site_packages, manifest_path.parent)
                     base_path = str(Path(rel_path)).replace("\\", "/")
-                    f.write(f'package("{base_module}", base_path="{base_path}")\n')
-                elif module_file.exists():
-                    rel_path = os.path.relpath(site_packages, manifest_path.parent)
-                    base_path = str(Path(rel_path)).replace("\\", "/")
-                    f.write(f'module("{base_module}.py", base_path="{base_path}")\n')
+
+                    if module_dir.is_dir():
+                        f.write(f'package("{base_module}", base_path="{base_path}")\n')
+                    else:
+                        f.write(
+                            f'module("{base_module}.py", base_path="{base_path}")\n'
+                        )
                 else:
-                    click.echo(click.style(f"Warning: Could not find module {base_module} in {site_packages}", fg='yellow'))
+                    click.echo(
+                        click.style(
+                            f"Warning: Could not find module {base_module} in {site_packages}",
+                            fg="yellow",
+                        )
+                    )
 
         # Include the contract file
-        f.write(f'\n# Contract\nmodule("{contract_path.name}", base_path="..")\n')
+        f.write("\n# Contract\n")
+        f.write(f'module("{contract_path.name}", base_path="..")\n')
 
     return manifest_path
 
@@ -254,7 +346,7 @@ def run_command(cmd: List[str], cwd: Optional[Path] = None) -> bool:
         True if the command succeeded, False if it failed
     """
     try:
-        process = subprocess.run(
+        subprocess.run(
             cmd,
             cwd=str(cwd) if cwd else None,
             check=True,
@@ -264,7 +356,7 @@ def run_command(cmd: List[str], cwd: Optional[Path] = None) -> bool:
 
         return True
     except Exception as e:
-        click.echo(click.style(f"Error running command: {e}", fg='red'))
+        click.echo(click.style(f"Error running command: {e}", fg="red"))
         return False
 
 
@@ -299,17 +391,26 @@ def compile_contract(
     build_dir.mkdir(exist_ok=True)
 
     # Analyze the contract
-    click.echo(click.style(f"Analyzing contract: {contract_path}", fg='cyan'))
+    click.echo(click.style(f"Analyzing contract: {contract_path}", fg="cyan"))
     exports = find_exports(contract_path)
     imports = find_imports(contract_path)
 
     if not exports:
-        click.echo(click.style("Warning: No exported functions found in the contract", fg='yellow'))
+        click.echo(
+            click.style(
+                "Warning: No exported functions found in the contract", fg="yellow"
+            )
+        )
     else:
-        click.echo(click.style(f"Found {len(exports)} exported functions: {', '.join(exports)}", fg='cyan'))
+        click.echo(
+            click.style(
+                f"Found {len(exports)} exported functions: {', '.join(exports)}",
+                fg="cyan",
+            )
+        )
 
     # Generate manifest
-    click.echo(click.style("Generating build files...", fg='cyan'))
+    click.echo(click.style("Generating build files...", fg="cyan"))
     manifest_path = generate_manifest(contract_path, imports, venv_path, build_dir)
 
     # Generate export wrappers
@@ -320,17 +421,19 @@ def compile_contract(
     mpy_cross_exe = mpy_cross_build_dir / "mpy-cross"
 
     if not mpy_cross_exe.exists() or rebuild:
-        click.echo(click.style("Building MicroPython cross-compiler...", fg='cyan'))
+        click.echo(click.style("Building MicroPython cross-compiler...", fg="cyan"))
         mpy_cross_build_dir.mkdir(exist_ok=True)
 
         if not run_command(
             ["make", "-C", str(mpy_cross_dir), f"BUILD={mpy_cross_build_dir}"]
         ):
-            click.echo(click.style("Failed to build MicroPython cross-compiler", fg='red'))
+            click.echo(
+                click.style("Failed to build MicroPython cross-compiler", fg="red")
+            )
             return False
 
     # Build the WASM contract
-    click.echo(click.style("Compiling contract to WebAssembly...", fg='cyan'))
+    click.echo(click.style("Compiling contract to WebAssembly...", fg="cyan"))
 
     # Remove any existing frozen content file to force regeneration
     frozen_content_path = build_dir / "frozen_content.c"
@@ -352,19 +455,21 @@ def compile_contract(
     ]
 
     if not run_command(build_cmd):
-        click.echo(click.style("Failed to build WebAssembly contract", fg='red'))
+        click.echo(click.style("Failed to build WebAssembly contract", fg="red"))
         return False
 
     # Verify the output file exists
     if not output_path.exists():
-        click.echo(click.style(f"Error: Output file {output_path} was not created", fg='red'))
+        click.echo(
+            click.style(f"Error: Output file {output_path} was not created", fg="red")
+        )
         return False
 
     # Show success message with file size
     size_kb = output_path.stat().st_size / 1024
-    click.echo(click.style("Successfully compiled contract:", fg='green'), nl=False)
-    click.echo(click.style(f" {output_path}", fg='cyan', bold=True), nl=False)
-    click.echo(click.style(f" ({size_kb:.1f} KB)", fg='yellow'))
+    click.echo(click.style("Successfully compiled contract:", fg="green"), nl=False)
+    click.echo(click.style(f" {output_path}", fg="cyan", bold=True), nl=False)
+    click.echo(click.style(f" ({size_kb:.1f} KB)", fg="yellow"))
     return True
 
 
@@ -386,20 +491,36 @@ def main(contract: str, output: Optional[str], venv: str, rebuild: bool):
 
     # Check that virtual environment exists
     if not venv_path.exists():
-        click.echo(click.style(f"Error: Virtual environment not found at {venv_path}", fg='red'))
-        click.echo(click.style("Create one with: uv init", fg='cyan'))
+        click.echo(
+            click.style(
+                f"Error: Virtual environment not found at {venv_path}", fg="red"
+            )
+        )
+        click.echo(click.style("Create one with: uv init", fg="cyan"))
         sys.exit(1)
 
     # Check that emcc is available
     if not shutil.which("emcc"):
-        click.echo(click.style("Error: Emscripten compiler (emcc) not found in PATH", fg='red'))
-        click.echo(click.style("Please install Emscripten: https://emscripten.org/docs/getting_started/", fg='cyan'))
+        click.echo(
+            click.style("Error: Emscripten compiler (emcc) not found in PATH", fg="red")
+        )
+        click.echo(
+            click.style(
+                "Please install Emscripten: https://emscripten.org/docs/getting_started/",
+                fg="cyan",
+            )
+        )
         sys.exit(1)
 
     # Determine assets directory
     assets_dir = Path(__file__).parent
     if not (assets_dir / "micropython").exists():
-        click.echo(click.style(f"Error: MicroPython assets not found at {assets_dir / 'micropython'}", fg='red'))
+        click.echo(
+            click.style(
+                f"Error: MicroPython assets not found at {assets_dir / 'micropython'}",
+                fg="red",
+            )
+        )
         sys.exit(1)
 
     # Compile the contract
