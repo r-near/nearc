@@ -1,26 +1,22 @@
 [project]
-name = "near-py-tool"
-version = "0.1.42"
-description = "Python NEAR contract build/deploy tool"
+name = "nearc"
+version = "0.1.0"
+description = "Python to WebAssembly compiler for NEAR smart contracts"
 readme = "README.md"
-requires-python = ">=3.9"
-dependencies = ["toml", "packaging", "randomname", "click", "rich_click", "questionary", "requests", "pytest"]
+requires-python = ">=3.11"
+dependencies = [
+    "rich-click>=1.8.6",
+]
 
 [project.scripts]
-near-py-tool = "near_py_tool.cli:cli"
-nearc = "near_py_tool.cli:cli"
+nearc = "nearc:main"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15.0",
+    "ruff>=0.9.9",
+]
 
 [build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-packages = ["near_py_tool", "near_py_tool.commands"]
-
-[tool.setuptools.data-files]
-"" = ["assets/*"]
-
-[tool.pytest.ini_options]
-testpaths = ["near_py_tool/tests"]
-python_files = "*.py"
-addopts = ["--ignore-glob=*_temp.py"]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
