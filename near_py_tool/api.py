@@ -49,6 +49,9 @@ def get_near_exports_from_file(file_path: str) -> Set[str]:
                 # Handle different decorator patterns
                 if isinstance(decorator, ast.Name):
                     decorator_name = decorator.id
+                elif isinstance(decorator, ast.Call):
+                    decorator_name = decorator.func.id
+                    print(decorator_name)
                 elif isinstance(decorator, ast.Attribute) and isinstance(decorator.value, ast.Name):
                     if decorator.value.id == "near" and decorator.attr == "export":
                         decorator_name = "near.export"
@@ -76,7 +79,10 @@ def get_imports_from_file(file_path: Path) -> Set[str]:
                 imports.add(node.module)
     
     # Remove `near_py_tool` if it exists
-    imports.remove("near_py_tool")
+    try:
+        imports.remove("near_py_tool")
+    except KeyError:
+        pass
 
     return imports
 

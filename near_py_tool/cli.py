@@ -27,8 +27,9 @@ def build_contract(project_dir, contract_name, rebuild_all):
         )
         click.echo(f"Contract built successfully at: {output_path}")
     except Exception as e:
-        click.echo(click.style(f"Error during build: {str(e)}", fg="bright_red"))
-        sys.exit(1)
+        raise e
+        #click.echo(click.style(f"Error during build: {str(e)}", fg="bright_red"))
+        #sys.exit(1)
 
 
 if __name__ == '__main__':
