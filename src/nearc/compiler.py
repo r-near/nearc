@@ -257,51 +257,60 @@ def generate_manifest(
         f.write("# THIS FILE IS GENERATED, DO NOT EDIT\n\n")
 
         # Add stdlib packages
-        for module in MPY_STDLIB_PACKAGES:
-            if module not in excluded_stdlib_packages:
-                f.write(f'require("{module}")\n')
+        included_stdlib_packages = set(MPY_STDLIB_PACKAGES) - set(
+            excluded_stdlib_packages
+        )
+        f.write(
+            "\n".join(f'require("{module}")' for module in included_stdlib_packages)
+        )
 
         # Add typing modules
-        f.write("\n# Typing modules\n")
-        for mod in ["typing", "typing_extensions"]:
-            f.write(f'module("{mod}.py", base_path="$(PORT_DIR)/extra/typing")\n')
+        f.write("\n\n# Typing modules\n")
+        f.write(
+            "\n".join(
+                f'module("{mod}.py", base_path="$(PORT_DIR)/extra/typing")'
+                for mod in ["typing", "typing_extensions"]
+            )
+        )
 
-        # Add external dependencies
-        external_deps_added = False
-        for module_name in imports:
-            if not is_micropython_module(module_name):
-                if not external_deps_added:
-                    f.write("\n# External dependencies\n")
-                    external_deps_added = True
+        # Find external dependencies (non-MicroPython modules)
+        external_modules = {
+            name.split(".")[0] for name in imports if not is_micropython_module(name)
+        }
 
-                # Get base module name (before first dot)
-                base_module = module_name.split(".")[0]
+        # Process external dependencies
+        external_deps = []
+        rel_path = os.path.relpath(site_packages, manifest_path.parent).replace(
+            "\\", "/"
+        )
 
-                # Process module
-                module_dir = site_packages / base_module
-                module_file = site_packages / f"{base_module}.py"
+        for base_module in external_modules:
+            module_dir = site_packages / base_module
+            module_file = site_packages / f"{base_module}.py"
 
-                if module_dir.is_dir() or module_file.exists():
-                    rel_path = os.path.relpath(site_packages, manifest_path.parent)
-                    base_path = str(Path(rel_path)).replace("\\", "/")
-
-                    if module_dir.is_dir():
-                        f.write(f'package("{base_module}", base_path="{base_path}")\n')
-                    else:
-                        f.write(
-                            f'module("{base_module}.py", base_path="{base_path}")\n'
-                        )
-                else:
-                    click.echo(
-                        click.style(
-                            f"Warning: Could not find module {base_module} in {site_packages}",
-                            fg="yellow",
-                        )
+            if module_dir.is_dir():
+                external_deps.append(
+                    f'package("{base_module}", base_path="{rel_path}")'
+                )
+            elif module_file.exists():
+                external_deps.append(
+                    f'module("{base_module}.py", base_path="{rel_path}")'
+                )
+            else:
+                click.echo(
+                    click.style(
+                        f"Warning: Could not find module {base_module} in {site_packages}",
+                        fg="yellow",
                     )
+                )
+
+        if external_deps:
+            f.write("\n\n# External dependencies\n")
+            f.write("\n".join(external_deps))
 
         # Include the contract file
-        f.write("\n# Contract\n")
-        f.write(f'module("{contract_path.name}", base_path="..")\n')
+        f.write("\n\n# Contract\n")
+        f.write(f'module("{contract_path.name}", base_path="..")')
 
     return manifest_path
 
