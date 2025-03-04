@@ -8,6 +8,7 @@ NEARC is a specialized compiler that transforms Python smart contracts into WebA
 - Use Python decorators (`@export`, `@view`, `@call`, etc.) to mark contract methods
 - Automatic dependency detection and packaging
 - Optimized WebAssembly output
+- Automatic NEP-330 contract metadata compliance
 
 ## Prerequisites
 
@@ -72,7 +73,7 @@ def get_count():
 
 @near.export
 def increment():
-    count = near.storage_write('count', 0)
+    count = near.storage_read('count', 0)
     count += 1
     near.storage_read('count', count)
     return count
@@ -80,15 +81,48 @@ def increment():
 
 The compiler automatically detects functions with `@near.export` and similar decorators, making them available as contract methods in the compiled WebAssembly.
 
+## Contract Metadata (NEP-330)
+
+NEARC automatically adds NEP-330 compliant metadata to your contracts. You can customize the metadata by adding a `[tool.near.contract]` section to your `pyproject.toml` file:
+
+```toml
+[tool.near.contract]
+version = "0.2.0"
+link = "https://github.com/myorg/mycontract"
+standards = [
+  { standard = "nep141", version = "1.0.0" },
+  { standard = "nep148", version = "1.0.0" }
+]
+build_info = { build_id = "12345" }
+```
+
+This will generate a `contract_source_metadata` function in your contract that returns:
+
+```json
+{
+  "version": "0.2.0",
+  "link": "https://github.com/myorg/mycontract",
+  "standards": [
+    { "standard": "nep141", "version": "1.0.0" },
+    { "standard": "nep148", "version": "1.0.0" },
+    { "standard": "nep330", "version": "1.0.0" }
+  ],
+  "build_info": { "build_id": "12345" }
+}
+```
+
+If you already have a `contract_source_metadata` function in your contract, it will be preserved.
+
 ## How It Works
 
 NEARC compiles Python smart contracts to WebAssembly through these steps:
 
 1. **Code Analysis** - Identifies exported functions and dependencies in the Python code
-2. **Manifest Generation** - Creates a MicroPython manifest file that includes all necessary modules
-3. **Export Wrapping** - Generates C wrappers for exported functions
-4. **WebAssembly Compilation** - Uses MicroPython and Emscripten to compile to WebAssembly
-5. **Optimization** - Produces a compact WASM file ready for blockchain deployment
+2. **Metadata Injection** - Adds NEP-330 metadata if not already present
+3. **Manifest Generation** - Creates a MicroPython manifest file that includes all necessary modules
+4. **Export Wrapping** - Generates C wrappers for exported functions
+5. **WebAssembly Compilation** - Uses MicroPython and Emscripten to compile to WebAssembly
+6. **Optimization** - Produces a compact WASM file ready for blockchain deployment
 
 The compiler handles dependency resolution automatically, making it easy to use Python libraries in your contracts (as long as they're compatible with MicroPython).
 

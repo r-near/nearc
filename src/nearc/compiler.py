@@ -11,6 +11,7 @@ import shutil
 import sys
 import subprocess
 import tomllib
+import json
 from pathlib import Path
 from typing import Set, List, Optional, Callable, Any
 
@@ -89,6 +90,84 @@ MPY_STDLIB_PACKAGES = [
 NEAR_MODULE_NAME = "near"
 
 
+def inject_metadata_function(contract_path: Path) -> Path:
+    """
+    Inject the contract_source_metadata function into a contract if it doesn't exist.
+
+    Args:
+        contract_path: Path to the contract file
+
+    Returns:
+        Path to the possibly modified contract file
+    """
+    # First check if the function already exists
+    with open(contract_path) as f:
+        content = f.read()
+
+    if "def contract_source_metadata()" in content:
+        return contract_path  # No injection needed
+
+    # Try to extract metadata from pyproject.toml if it exists
+    metadata = {"standards": [{"standard": "nep330", "version": "1.0.0"}]}
+
+    pyproject_path = contract_path.parent / "pyproject.toml"
+    if pyproject_path.exists():
+        try:
+            with open(pyproject_path, "rb") as f:
+                pyproject_data = tomllib.load(f)
+
+            # Extract metadata from pyproject.toml
+            contract_info = (
+                pyproject_data.get("tool", {}).get("near", {}).get("contract", {})
+            )
+
+            if "version" in contract_info:
+                metadata["version"] = contract_info["version"]
+            if "link" in contract_info:
+                metadata["link"] = contract_info["link"]
+            if "standards" in contract_info:
+                # Merge with existing standards, ensuring nep330 is included
+                standards = contract_info["standards"]
+                has_nep330 = False
+                for std in standards:
+                    if std.get("standard") == "nep330":
+                        has_nep330 = True
+                        break
+
+                if not has_nep330:
+                    standards.append({"standard": "nep330", "version": "1.0.0"})
+
+                metadata["standards"] = standards
+
+            if "build_info" in contract_info:
+                metadata["build_info"] = contract_info["build_info"]
+        except Exception as e:
+            console.print(
+                f"[yellow]Warning: Could not read metadata from pyproject.toml: {e}"
+            )
+
+    # Create the function code
+    metadata_code = f"""
+
+# Auto-generated NEP-330 metadata function
+import near
+
+@near.export
+def contract_source_metadata():
+    near.value_return('{json.dumps(metadata)}')
+"""
+
+    # Create a modified file with the appended function
+    modified_path = contract_path.parent / f"{contract_path.stem}_with_metadata.py"
+    with open(modified_path, "w") as f:
+        f.write(content)
+        f.write(metadata_code)
+
+    console.print("[cyan]Added NEP-330 metadata function to contract[/]")
+
+    return modified_path
+
+
 def find_exports(file_path: Path) -> Set[str]:
     """
     Find all functions decorated with NEAR export decorators in a Python file.
@@ -130,6 +209,10 @@ def find_exports(file_path: Path) -> Set[str]:
             if name in export_decorators:
                 exports.add(node.name)
                 break
+
+    # Always include contract_source_metadata in exports
+    # This ensures it's properly registered even if we need to inject it
+    exports.add("contract_source_metadata")
 
     return exports
 
@@ -640,8 +723,17 @@ def compile_contract(
     # Show a header for the compilation
     console.print(f"[bold cyan]Compiling NEAR Contract:[/] [yellow]{contract_path}[/]")
 
-    # Analyze the contract
+    # Inject metadata if needed
+    contract_with_metadata = inject_metadata_function(contract_path)
+
+    # Use the potentially modified contract for compilation
+    # We'll analyze the original contract for exports and imports first to avoid confusion
     exports, imports = analyze_contract(contract_path)
+
+    # Add any additional imports needed for metadata
+    if contract_with_metadata != contract_path:
+        metadata_imports = find_imports(contract_with_metadata)
+        imports = imports.union(metadata_imports)
 
     # Find site-packages directory
     site_packages = find_site_packages(venv_path)
@@ -649,9 +741,9 @@ def compile_contract(
         console.print(f"[red]Error: Could not find site-packages in {venv_path}")
         sys.exit(1)
 
-    # Generate build files - pass site_packages to allow warnings to be printed first
+    # Generate build files
     manifest_file, wrappers_path = prepare_build_files(
-        contract_path, imports, exports, venv_path, build_dir, site_packages
+        contract_with_metadata, imports, exports, venv_path, build_dir, site_packages
     )
 
     # Build MicroPython cross-compiler if needed
@@ -669,6 +761,10 @@ def compile_contract(
     ):
         console.print("[red]Failed to build WebAssembly contract")
         return False
+
+    # Clean up temporary file if we created one
+    if contract_with_metadata != contract_path and contract_with_metadata.exists():
+        contract_with_metadata.unlink()
 
     # Verify the output file exists
     if not output_path.exists():
