@@ -1,3 +1,12 @@
-from .compiler import main
+"""
+NEARC - NEAR Python Contract Compiler
 
-__version__ = "0.1.0"
+This package provides tools to compile Python smart contracts to WebAssembly
+for deployment on the NEAR blockchain.
+"""
+
+from .cli import main
+
+__version__ = "0.2.0"
+
+__all__ = ["main"]
