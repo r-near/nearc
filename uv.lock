@@ -1,4 +1,5 @@
 version = 1
+revision = 1
 requires-python = ">=3.11"
 
 [[package]]
@@ -85,9 +86,10 @@ wheels = [
 
 [[package]]
 name = "nearc"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "." }
 dependencies = [
+    { name = "rich" },
     { name = "rich-click" },
 ]
 
@@ -99,7 +101,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "rich-click", specifier = ">=1.8.6" }]
+requires-dist = [
+    { name = "rich", specifier = ">=13.9.4" },
+    { name = "rich-click", specifier = ">=1.8.6" },
+]
 
 [package.metadata.requires-dev]
 dev = [

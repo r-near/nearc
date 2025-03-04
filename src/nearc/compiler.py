@@ -12,9 +12,14 @@ import sys
 import subprocess
 import tomllib
 from pathlib import Path
-from typing import Set, List, Optional
+from typing import Set, List, Optional, Callable, Any
 
 import rich_click as click
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn, TaskID
+
+
+console = Console()
 
 MPY_MODULES = {"array", "builtins", "json", "os", "random", "struct", "sys"}
 MPY_LIB_PACKAGES = {"aiohttp", "cbor2", "iperf3", "pyjwt", "requests"}
@@ -182,11 +187,8 @@ def get_excluded_stdlib_packages(project_path: Path) -> List[str]:
                 .get("exclude-micropython-stdlib-packages", [])
             )
         except (ImportError, Exception) as e:
-            click.echo(
-                click.style(
-                    f"Warning: Could not read exclusions from pyproject.toml: {e}",
-                    fg="yellow",
-                )
+            console.print(
+                f"[yellow]Warning: Could not read exclusions from pyproject.toml: {e}"
             )
 
     return excluded_packages
@@ -224,7 +226,7 @@ def find_site_packages(venv_path: Path) -> Optional[Path]:
 
 def generate_manifest(
     contract_path: Path, imports: Set[str], venv_path: Path, build_dir: Path
-) -> Path:
+) -> tuple[Path, List[str]]:
     """
     Generate a MicroPython manifest file that includes all necessary modules.
 
@@ -235,21 +237,19 @@ def generate_manifest(
         build_dir: Path to the build directory
 
     Returns:
-        Path to the generated manifest file
+        Tuple of (manifest_path, missing_modules)
     """
     manifest_path = build_dir / "manifest.py"
     site_packages = find_site_packages(venv_path)
 
     if not site_packages:
-        click.echo(
-            click.style(f"Error: Could not find site-packages in {venv_path}", fg="red")
-        )
+        console.print(f"[red]Error: Could not find site-packages in {venv_path}")
         sys.exit(1)
 
     # Get excluded packages
     excluded_stdlib_packages = get_excluded_stdlib_packages(contract_path.parent)
     if excluded_stdlib_packages:
-        click.echo(
+        console.print(
             f"Excluding MicroPython stdlib packages: {', '.join(excluded_stdlib_packages)}"
         )
 
@@ -284,6 +284,7 @@ def generate_manifest(
             "\\", "/"
         )
 
+        missing_modules = []
         for base_module in external_modules:
             module_dir = site_packages / base_module
             module_file = site_packages / f"{base_module}.py"
@@ -297,12 +298,11 @@ def generate_manifest(
                     f'module("{base_module}.py", base_path="{rel_path}")'
                 )
             else:
-                click.echo(
-                    click.style(
-                        f"Warning: Could not find module {base_module} in {site_packages}",
-                        fg="yellow",
-                    )
-                )
+                missing_modules.append(base_module)
+
+        # Print warnings for missing modules separately before generating build files
+        # This is key change #1 - move these warnings to print before the "Generating build files" message
+        # The actual printing is done in prepare_build_files function
 
         if external_deps:
             f.write("\n\n# External dependencies\n")
@@ -312,7 +312,7 @@ def generate_manifest(
         f.write("\n\n# Contract\n")
         f.write(f'module("{contract_path.name}", base_path="..")')
 
-    return manifest_path
+    return manifest_path, missing_modules
 
 
 def generate_export_wrappers(
@@ -343,30 +343,268 @@ def generate_export_wrappers(
     return wrappers_path
 
 
-def run_command(cmd: List[str], cwd: Optional[Path] = None) -> bool:
+def run_command_with_progress(
+    cmd: List[str],
+    cwd: Optional[Path] = None,
+    track_task_id: Optional[TaskID] = None,
+    progress: Optional[Progress] = None,
+    description: Optional[str] = None,
+) -> bool:
     """
-    Run a shell command and handle errors.
+    Run a shell command and handle errors with live output.
 
     Args:
         cmd: Command to run as a list of strings
         cwd: Working directory for the command
+        track_task_id: Task ID in the progress bar to update
+        progress: Progress instance for updating task status
+        description: Description to show in the progress bar
 
     Returns:
         True if the command succeeded, False if it failed
     """
     try:
-        subprocess.run(
+        process = subprocess.Popen(
             cmd,
             cwd=str(cwd) if cwd else None,
-            check=True,
-            capture_output=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
+            bufsize=1,
         )
+
+        # Use the provided description or default to the command
+        display_description = description or f"Running: {' '.join(cmd[:2])}"
+
+        # Read and display output in real-time
+        output_lines = []
+        if process.stdout:
+            for line in iter(process.stdout.readline, ""):
+                if not line:
+                    break
+                output_lines.append(line.strip())
+                if progress and track_task_id is not None:
+                    progress.update(track_task_id, description=display_description)
+
+        # Wait for process to complete
+        return_code = process.wait()
+
+        if return_code != 0:
+            output_str = "\n".join(output_lines)
+            console.print(f"[red]Command failed with exit code {return_code}:")
+            console.print(f"[red]{' '.join(cmd)}")
+            if output_str:
+                console.print(f"[red]Command output:[/]\n{output_str}")
+            return False
 
         return True
     except Exception as e:
-        click.echo(click.style(f"Error running command: {e}", fg="red"))
+        console.print(f"[red]Error running command: {e}")
+        console.print(f"[red]{' '.join(cmd)}")
         return False
+
+
+def with_progress(description: str) -> Callable:
+    """
+    Decorator for functions that should show a progress indicator.
+
+    Args:
+        description: Description of the task
+
+    Returns:
+        Decorated function
+    """
+
+    def decorator(func: Callable) -> Callable:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            # Use a custom TimeElapsedColumn that shows seconds instead of HH:MM:SS
+            class SecondsElapsedColumn(TimeElapsedColumn):
+                def render(self, task):
+                    elapsed = task.finished_time if task.finished else task.elapsed
+                    return f"[yellow]{elapsed:.1f}s"
+
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[cyan]{task.description}"),
+                SecondsElapsedColumn(),
+            ) as progress:
+                task = progress.add_task(description, total=None)
+                result = func(*args, **kwargs, progress=progress, task_id=task)
+                return result
+
+        return wrapper
+
+    return decorator
+
+
+def analyze_contract(contract_path: Path) -> tuple[Set[str], Set[str]]:
+    """
+    Analyze a contract file to find exports and imports.
+
+    Args:
+        contract_path: Path to the contract file
+
+    Returns:
+        Tuple of (exports, imports)
+    """
+    console.print("[cyan]Analyzing contract...[/]", end="")
+    exports = find_exports(contract_path)
+    imports = find_imports(contract_path)
+
+    # Show analysis results
+    if not exports:
+        console.print(" [yellow]No exported functions found[/]")
+    else:
+        console.print(
+            f" found [cyan]{len(exports)}[/] exported functions: [cyan]{', '.join(sorted(exports))}[/]"
+        )
+
+    return exports, imports
+
+
+def prepare_build_files(
+    contract_path: Path,
+    imports: Set[str],
+    exports: Set[str],
+    venv_path: Path,
+    build_dir: Path,
+    site_packages: Path,
+) -> tuple[Path, Path]:
+    """
+    Generate the manifest and wrappers files.
+
+    Args:
+        contract_path: Path to the contract file
+        imports: Set of imported module names
+        exports: Set of exported function names
+        venv_path: Path to the virtual environment
+        build_dir: Path to the build directory
+        site_packages: Path to site-packages directory
+
+    Returns:
+        Tuple of (manifest_path, wrappers_path)
+    """
+    # Generate manifest and get missing modules
+    manifest_result, missing_modules = generate_manifest(
+        contract_path, imports, venv_path, build_dir
+    )
+
+    # Print warnings for missing modules before the "Generating build files" message
+    for module in missing_modules:
+        console.print(
+            f"[yellow]Warning: Could not find module {module} in {site_packages}"
+        )
+
+    console.print("[cyan]Generating build files...[/]", end="")
+
+    # Generate wrappers
+    wrappers_path = generate_export_wrappers(exports, contract_path.name, build_dir)
+
+    console.print(" done")
+
+    return manifest_result, wrappers_path
+
+
+@with_progress("Building MicroPython cross-compiler")
+def build_mpy_cross(
+    mpy_cross_dir: Path,
+    build_dir: Path,
+    rebuild: bool = False,
+    progress=None,
+    task_id=None,
+) -> Path:
+    """
+    Build the MicroPython cross-compiler.
+
+    Args:
+        mpy_cross_dir: Path to the mpy-cross directory
+        build_dir: Path to the build directory
+        rebuild: Whether to force a rebuild
+        progress: Progress instance
+        task_id: Task ID in the progress bar
+
+    Returns:
+        Path to the mpy-cross executable
+    """
+    mpy_cross_build_dir = build_dir / "mpy-cross"
+    mpy_cross_exe = mpy_cross_build_dir / "mpy-cross"
+
+    if mpy_cross_exe.exists() and not rebuild:
+        # Skip showing the progress bar completely for cached builds
+        if progress:
+            progress.stop()
+        console.print("[cyan]Using existing MicroPython cross-compiler[/]")
+        return mpy_cross_exe
+
+    # Only reach here if we need to build
+    mpy_cross_build_dir.mkdir(exist_ok=True)
+
+    if not run_command_with_progress(
+        ["make", "-C", str(mpy_cross_dir), f"BUILD={mpy_cross_build_dir}"],
+        track_task_id=task_id,
+        progress=progress,
+        description="Building MicroPython cross-compiler",
+    ):
+        console.print("[red]Failed to build MicroPython cross-compiler")
+        sys.exit(1)
+
+    return mpy_cross_exe
+
+
+@with_progress("Compiling WebAssembly contract")
+def build_wasm(
+    mpy_port_dir: Path,
+    build_dir: Path,
+    mpy_cross_exe: Path,
+    manifest_path: Path,
+    wrappers_path: Path,
+    exports: Set[str],
+    output_path: Path,
+    progress=None,
+    task_id=None,
+) -> bool:
+    """
+    Build the WebAssembly contract.
+
+    Args:
+        mpy_port_dir: Path to the MicroPython port directory
+        build_dir: Path to the build directory
+        mpy_cross_exe: Path to the mpy-cross executable
+        manifest_path: Path to the manifest file
+        wrappers_path: Path to the wrappers file
+        exports: Set of exported function names
+        output_path: Path where the output WASM should be written
+        progress: Progress instance
+        task_id: Task ID in the progress bar
+
+    Returns:
+        True if compilation succeeded, False if it failed
+    """
+    # Remove any existing frozen content file to force regeneration
+    frozen_content_path = build_dir / "frozen_content.c"
+    if frozen_content_path.exists():
+        frozen_content_path.unlink()
+
+    # Build command
+    build_cmd = [
+        "make",
+        "-C",
+        str(mpy_port_dir),
+        f"BUILD={build_dir}",
+        f"MICROPY_MPYCROSS={mpy_cross_exe}",
+        f"MICROPY_MPYCROSS_DEPENDENCY={mpy_cross_exe}",
+        f"FROZEN_MANIFEST={manifest_path}",
+        f"SRC_C_GENERATED={wrappers_path}",
+        f"EXPORTED_FUNCTIONS={','.join(['_' + e for e in exports])}",
+        f"OUTPUT_WASM={output_path}",
+    ]
+
+    return run_command_with_progress(
+        build_cmd,
+        track_task_id=task_id,
+        progress=progress,
+        description="Compiling WebAssembly contract",
+    )
 
 
 def compile_contract(
@@ -377,7 +615,7 @@ def compile_contract(
     rebuild: bool = False,
 ) -> bool:
     """
-    Compile a NEAR contract to WebAssembly.
+    Compile a NEAR contract to WebAssembly with progress display.
 
     Args:
         contract_path: Path to the contract file
@@ -399,86 +637,49 @@ def compile_contract(
         shutil.rmtree(build_dir)
     build_dir.mkdir(exist_ok=True)
 
+    # Show a header for the compilation
+    console.print(f"[bold cyan]Compiling NEAR Contract:[/] [yellow]{contract_path}[/]")
+
     # Analyze the contract
-    click.echo(click.style(f"Analyzing contract: {contract_path}", fg="cyan"))
-    exports = find_exports(contract_path)
-    imports = find_imports(contract_path)
+    exports, imports = analyze_contract(contract_path)
 
-    if not exports:
-        click.echo(
-            click.style(
-                "Warning: No exported functions found in the contract", fg="yellow"
-            )
-        )
-    else:
-        click.echo(
-            click.style(
-                f"Found {len(exports)} exported functions: {', '.join(exports)}",
-                fg="cyan",
-            )
-        )
+    # Find site-packages directory
+    site_packages = find_site_packages(venv_path)
+    if not site_packages:
+        console.print(f"[red]Error: Could not find site-packages in {venv_path}")
+        sys.exit(1)
 
-    # Generate manifest
-    click.echo(click.style("Generating build files...", fg="cyan"))
-    manifest_path = generate_manifest(contract_path, imports, venv_path, build_dir)
-
-    # Generate export wrappers
-    wrappers_path = generate_export_wrappers(exports, contract_path.name, build_dir)
+    # Generate build files - pass site_packages to allow warnings to be printed first
+    manifest_file, wrappers_path = prepare_build_files(
+        contract_path, imports, exports, venv_path, build_dir, site_packages
+    )
 
     # Build MicroPython cross-compiler if needed
-    mpy_cross_build_dir = build_dir / "mpy-cross"
-    mpy_cross_exe = mpy_cross_build_dir / "mpy-cross"
-
-    if not mpy_cross_exe.exists() or rebuild:
-        click.echo(click.style("Building MicroPython cross-compiler...", fg="cyan"))
-        mpy_cross_build_dir.mkdir(exist_ok=True)
-
-        if not run_command(
-            ["make", "-C", str(mpy_cross_dir), f"BUILD={mpy_cross_build_dir}"]
-        ):
-            click.echo(
-                click.style("Failed to build MicroPython cross-compiler", fg="red")
-            )
-            return False
+    mpy_cross_exe = build_mpy_cross(mpy_cross_dir, build_dir, rebuild)
 
     # Build the WASM contract
-    click.echo(click.style("Compiling contract to WebAssembly...", fg="cyan"))
-
-    # Remove any existing frozen content file to force regeneration
-    frozen_content_path = build_dir / "frozen_content.c"
-    if frozen_content_path.exists():
-        frozen_content_path.unlink()
-
-    # Build command
-    build_cmd = [
-        "make",
-        "-C",
-        str(mpy_port_dir),
-        f"BUILD={build_dir}",
-        f"MICROPY_MPYCROSS={mpy_cross_exe}",
-        f"MICROPY_MPYCROSS_DEPENDENCY={mpy_cross_exe}",
-        f"FROZEN_MANIFEST={manifest_path}",
-        f"SRC_C_GENERATED={wrappers_path}",
-        f"EXPORTED_FUNCTIONS={','.join(['_' + e for e in exports])}",
-        f"OUTPUT_WASM={output_path}",
-    ]
-
-    if not run_command(build_cmd):
-        click.echo(click.style("Failed to build WebAssembly contract", fg="red"))
+    if not build_wasm(
+        mpy_port_dir,
+        build_dir,
+        mpy_cross_exe,
+        manifest_file,
+        wrappers_path,
+        exports,
+        output_path,
+    ):
+        console.print("[red]Failed to build WebAssembly contract")
         return False
 
     # Verify the output file exists
     if not output_path.exists():
-        click.echo(
-            click.style(f"Error: Output file {output_path} was not created", fg="red")
-        )
+        console.print(f"[red]Error: Output file {output_path} was not created")
         return False
 
     # Show success message with file size
     size_kb = output_path.stat().st_size / 1024
-    click.echo(click.style("Successfully compiled contract:", fg="green"), nl=False)
-    click.echo(click.style(f" {output_path}", fg="cyan", bold=True), nl=False)
-    click.echo(click.style(f" ({size_kb:.1f} KB)", fg="yellow"))
+    console.print(
+        f"[bold green]Successfully compiled contract:[/] [cyan]{output_path}[/] [yellow]({size_kb:.1f} KB)[/]"
+    )
     return True
 
 
@@ -500,35 +701,23 @@ def main(contract: str, output: Optional[str], venv: str, rebuild: bool):
 
     # Check that virtual environment exists
     if not venv_path.exists():
-        click.echo(
-            click.style(
-                f"Error: Virtual environment not found at {venv_path}", fg="red"
-            )
-        )
-        click.echo(click.style("Create one with: uv init", fg="cyan"))
+        console.print(f"[red]Error: Virtual environment not found at {venv_path}")
+        console.print("[cyan]Create one with: uv init")
         sys.exit(1)
 
     # Check that emcc is available
     if not shutil.which("emcc"):
-        click.echo(
-            click.style("Error: Emscripten compiler (emcc) not found in PATH", fg="red")
-        )
-        click.echo(
-            click.style(
-                "Please install Emscripten: https://emscripten.org/docs/getting_started/",
-                fg="cyan",
-            )
+        console.print("[red]Error: Emscripten compiler (emcc) not found in PATH")
+        console.print(
+            "[cyan]Please install Emscripten: https://emscripten.org/docs/getting_started/"
         )
         sys.exit(1)
 
     # Determine assets directory
     assets_dir = Path(__file__).parent
     if not (assets_dir / "micropython").exists():
-        click.echo(
-            click.style(
-                f"Error: MicroPython assets not found at {assets_dir / 'micropython'}",
-                fg="red",
-            )
+        console.print(
+            f"[red]Error: MicroPython assets not found at {assets_dir / 'micropython'}"
         )
         sys.exit(1)
 
