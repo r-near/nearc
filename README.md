@@ -75,7 +75,7 @@ def get_count():
 def increment():
     count = near.storage_read('count', 0)
     count += 1
-    near.storage_read('count', count)
+    near.storage_write('count', count)
     return count
 ```
 
