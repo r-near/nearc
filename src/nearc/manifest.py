@@ -126,7 +126,7 @@ def generate_export_wrappers(
         f.write("/* Generated export wrappers for NEAR contract */\n\n")
         f.write("void run_frozen_fn(const char *file_name, const char *fn_name);\n\n")
 
-        for export in exports:
+        for export in sorted(exports):
             f.write(f"void {export}() {{\n")
             f.write(f'    run_frozen_fn("{contract_name}", "{export}");\n')
             f.write("}\n\n")
