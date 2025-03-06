@@ -108,8 +108,7 @@ nearc contract.py --init-reproducible-config
 
 ```toml
 [tool.near.reproducible_build]
-image = "sourcescan/nearc:0.3.2-python-3.11"
-image_digest = "sha256:abcdef123456789abcdef123456789abcdef123456789abcdef123456789abc"
+image = "ghcr.io/r-near/nearc@sha256:REPLACE_WITH_ACTUAL_DIGEST"
 container_build_command = ["nearc"]
 ```
 
@@ -181,9 +180,9 @@ This will generate a `contract_source_metadata` function in your contract that r
     { "standard": "nep330", "version": "1.0.0" }
   ],
   "build_info": {
-    "build_environment": "ghcr.io/r-near/nearc:main",
-    "build_environment_digest": "sha256:abcdef123456789...",
+    "build_environment": "ghcr.io/r-near/nearc@sha256:REPLACE_WITH_ACTUAL_DIGEST",
     "build_command": ["nearc"],
+    "source_code_snapshot": "git+https://github.com/myorg/mycontract.git#CURRENT_COMMIT"
   }
 }
 ```

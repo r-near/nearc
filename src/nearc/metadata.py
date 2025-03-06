@@ -145,7 +145,6 @@ def extract_metadata_from_pyproject(
     if reproducible_build:
         base_metadata["build_info"] = {
             "build_environment": reproducible_build.get("image", ""),
-            "build_environment_digest": reproducible_build.get("image_digest", ""),
             "build_command": reproducible_build.get("container_build_command", []),
         }
 

@@ -31,8 +31,7 @@ This will create or update your `pyproject.toml` file with the necessary configu
 
 ```toml
 [tool.near.reproducible_build]
-image = "ghcr.io/r-near/nearc:main"
-image_digest = "sha256:example_digest_replace_this_with_actual_digest"
+image = "ghcr.io/r-near/nearc@sha256:REPLACE_WITH_ACTUAL_DIGEST"
 container_build_command = ["nearc"]
 ```
 
@@ -143,9 +142,9 @@ The contract metadata follows the NEP-330 standard with these fields:
   "standards": [{"standard": "nep330", "version": "1.0.0"}],
   "link": "https://github.com/username/my-near-contract",
   "build_info": {
-    "build_environment": "sourcescan/nearc:0.3.2-python-3.11",
-    "build_environment_digest": "sha256:abcdef123456789...",
-    "build_command": ["nearc"]
+    "build_environment": "ghcr.io/r-near/nearc@sha256:REPLACE_WITH_ACTUAL_DIGEST",
+    "build_command": ["nearc"],
+    "source_code_snapshot": "git+https://github.com/username/my-near-contract.git#CURRENT_COMMIT"
   }
 }
 ```
@@ -168,9 +167,7 @@ build-backend = "hatchling.build"
 
 [tool.near.reproducible_build]
 # Docker image, descriptor of build environment
-image = "ghcr.io/r-near/nearc:main"
-# Tag after the colon serves only a descriptive purpose; image is identified by digest
-image_digest = "sha256:abcdef123456789abcdef123456789abcdef123456789abcdef123456789abc"
+image = "ghcr.io/r-near/nearc@sha256:REPLACE_WITH_ACTUAL_DIGEST"
 # Build command inside the Docker container
 container_build_command = ["nearc"]
 
