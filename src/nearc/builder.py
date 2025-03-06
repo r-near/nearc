@@ -105,7 +105,7 @@ def build_wasm(
         f"MICROPY_MPYCROSS_DEPENDENCY={mpy_cross_exe}",
         f"FROZEN_MANIFEST={manifest_path}",
         f"SRC_C_GENERATED={wrappers_path}",
-        f"EXPORTED_FUNCTIONS={','.join(['_' + e for e in exports])}",
+        f"EXPORTED_FUNCTIONS={','.join(['_' + e for e in sorted(exports)])}",
         f"OUTPUT_WASM={output_path}",
     ]
 
