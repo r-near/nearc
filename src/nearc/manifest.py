@@ -51,8 +51,12 @@ def generate_manifest(
         included_stdlib_packages = set(MPY_STDLIB_PACKAGES) - set(
             excluded_stdlib_packages
         )
+
         f.write(
-            "\n".join(f'require("{module}")' for module in included_stdlib_packages)
+            "\n".join(
+                f'require("{module}")'
+                for module in sorted(included_stdlib_packages)  # Deterministic builds
+            )
         )
 
         # Add typing modules
