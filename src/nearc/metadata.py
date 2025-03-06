@@ -41,6 +41,18 @@ def inject_metadata_function(contract_path: Path) -> Path:
                 f"[yellow]Warning: Could not read metadata from pyproject.toml: {e}"
             )
 
+    # Get Git information for the contract
+    from .reproducible import get_git_info
+
+    git_info = get_git_info(contract_path.parent)
+
+    # Add Git information directly to metadata
+    if git_info:
+        if "repository" in git_info:
+            metadata["link"] = git_info["repository"]
+        if "commit" in git_info:
+            metadata["source_version"] = git_info["commit"]
+
     # Create the function code
     metadata_code = f"""
 
