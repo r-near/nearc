@@ -19,16 +19,58 @@ from .utils import console
 @click.option("--output", "-o", help="Output WASM file path")
 @click.option("--venv", help="Path to virtual environment", default=".venv")
 @click.option("--rebuild", is_flag=True, help="Force a clean rebuild")
-def main(contract: str, output: Optional[str], venv: str, rebuild: bool):
+@click.option(
+    "--reproducible", is_flag=True, help="Build reproducibly in Docker container"
+)
+@click.option(
+    "--init-reproducible-config",
+    is_flag=True,
+    help="Initialize reproducible build configuration in pyproject.toml",
+)
+def main(
+    contract: str,
+    output: Optional[str],
+    venv: str,
+    rebuild: bool,
+    reproducible: bool,
+    init_reproducible_config: bool,
+):
     """Compile a Python contract to WebAssembly for NEAR blockchain."""
     # Resolve paths
     contract_path = Path(contract).resolve()
+    contract_dir = contract_path.parent
     venv_path = Path(venv).resolve()
 
     # Determine output path if not specified
     if not output:
         output = f"{contract_path.stem}.wasm"
     output_path = Path(output).resolve()
+
+    # Handle initialization of reproducible build configuration
+    if init_reproducible_config:
+        from .reproducible import init_reproducible_build_config
+
+        if init_reproducible_build_config(contract_dir):
+            console.print("[green]Reproducible build configuration initialized")
+        else:
+            console.print("[red]Failed to initialize reproducible build configuration")
+        sys.exit(0)
+
+    # If reproducible flag is set, build in Docker
+    if reproducible:
+        from .reproducible import run_reproducible_build
+
+        # Prepare build args
+        build_args = []
+        if rebuild:
+            build_args.append("--rebuild")
+
+        # Run reproducible build in Docker
+        if not run_reproducible_build(contract_path, output_path, build_args):
+            console.print("[red]Failed to run reproducible build")
+            sys.exit(1)
+
+        sys.exit(0)
 
     # Check that virtual environment exists
     if not venv_path.exists():
