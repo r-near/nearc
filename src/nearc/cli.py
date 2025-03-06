@@ -96,7 +96,6 @@ def main(
             )
             sys.exit(1)
 
-    contract_dir = contract_path.parent
     venv_path = Path(venv).resolve()
 
     # Determine output path if not specified
