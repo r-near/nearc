@@ -4,9 +4,9 @@ Contract metadata handling for the NEAR Python contract compiler.
 """
 
 import json
-import tomllib
 from pathlib import Path
 from typing import Dict, Any
+import tomllib
 
 from .utils import console
 
@@ -85,6 +85,11 @@ def extract_metadata_from_pyproject(
     # Try to get NEAR-specific metadata from tool section
     near_data = pyproject_data.get("tool", {}).get("near", {}).get("contract", {})
 
+    # Get reproducible build data if available
+    reproducible_build = (
+        pyproject_data.get("tool", {}).get("near", {}).get("reproducible_build", {})
+    )
+
     # Map standard pyproject.toml fields to NEP-330 metadata
     if "version" in project_data:
         base_metadata["version"] = project_data["version"]
@@ -96,8 +101,15 @@ def extract_metadata_from_pyproject(
         base_metadata["link"] = project_data["urls"]["repository"]
     elif "url" in project_data:
         base_metadata["link"] = project_data["url"]
+    elif "repository" in project_data:
+        base_metadata["link"] = project_data["repository"]
     elif "link" in near_data:
         base_metadata["link"] = near_data["link"]
+
+    # Use git repository if available from reproducible build info
+    git_info = near_data.get("git_info", {})
+    if git_info and "repository" in git_info and not base_metadata.get("link"):
+        base_metadata["link"] = git_info["repository"]
 
     # Handle standards field
     if "standards" in near_data:
@@ -114,5 +126,19 @@ def extract_metadata_from_pyproject(
     # Handle build info
     if "build_info" in near_data:
         base_metadata["build_info"] = near_data["build_info"]
+
+    # Add reproducible build information if available
+    if reproducible_build:
+        base_metadata["build_info"] = {
+            "build_environment": reproducible_build.get("image", ""),
+            "build_environment_digest": reproducible_build.get("image_digest", ""),
+            "build_command": reproducible_build.get("container_build_command", []),
+        }
+
+        # Add git info if available
+        if git_info:
+            base_metadata["build_info"]["source_code_snapshot"] = (
+                f"git+{git_info.get('repository', '')}#{git_info.get('commit', '')}"
+            )
 
     return base_metadata

@@ -7,6 +7,6 @@ for deployment on the NEAR blockchain.
 
 from .cli import main
 
-__version__ = "0.2.0"
+__version__ = "0.3.3"
 
 __all__ = ["main"]

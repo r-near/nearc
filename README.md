@@ -163,6 +163,72 @@ NEARC compiles Python smart contracts to WebAssembly through these steps:
 
 The compiler handles dependency resolution automatically, making it easy to use Python libraries in your contracts (as long as they're compatible with MicroPython).
 
+
+## Reproducible Builds
+
+NEARC supports reproducible builds through Docker containers, ensuring that compiled WASM contracts can be verified by tools like SourceScan.
+
+### Setting Up for Reproducible Builds
+
+1. Initialize the reproducible build configuration in your project:
+
+```bash
+nearc contract.py --init-reproducible-config
+```
+
+This adds the required configuration to your `pyproject.toml` file. Update it with the correct Docker image digest found in our [GitHub releases](https://github.com/r-near/nearc/releases).
+
+### Example Configuration
+
+Your `pyproject.toml` should have a section like this:
+
+```toml
+[tool.near.reproducible_build]
+image = "rnear/nearc:0.3.2-python-3.11"
+image_digest = "sha256:abcdef123456789abcdef123456789abcdef123456789abcdef123456789abc"
+container_build_command = ["nearc"]
+```
+
+### Building Reproducibly
+
+To create a reproducible build:
+
+1. Ensure all your code is committed to a Git repository
+2. Run:
+
+```bash
+nearc contract.py --reproducible
+```
+
+This will:
+- Verify your Git repository is clean (all changes committed)
+- Pull the specified Docker image
+- Build your contract in the container
+- Generate a WASM file with embedded metadata for verification
+
+### Requirements for Verification
+
+For successful verification:
+- All code must be in a public Git repository
+- All changes must be committed before building
+- You must use the `--reproducible` flag for the build
+
+### Verification Process
+
+When your contract is deployed, verification tools like SourceScan will:
+1. Extract the metadata from your contract
+2. Pull the exact source code from your Git repository
+3. Build using the same Docker container specified in your metadata
+4. Compare the resulting WASM with what's deployed on-chain
+
+### Troubleshooting
+
+If verification fails:
+- Ensure you used `--reproducible` flag when building
+- Check that all code was committed before building
+- Verify you're using the correct Docker image and digest
+- Make sure your Git repository is public and accessible
+
 ## Development
 
 If you want to contribute to NEARC or modify the source code:
