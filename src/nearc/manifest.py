@@ -106,7 +106,7 @@ class ManifestGenerator:
             spec = pathspec.PathSpec.from_lines(
                 pathspec.patterns.GitWildMatchPattern, gitignore_patterns
             )
-            console.print(f"[cyan]Using .gitignore patterns for module filtering[/]")
+            console.print("[cyan]Using .gitignore patterns for module filtering[/]")
             return spec
 
     def find_local_modules(self) -> List[Path]:
