@@ -48,11 +48,13 @@ def inject_metadata_function(contract_path: Path) -> Path:
 
     # Add Git information directly to metadata
     if git_info:
-        if "repository" in git_info:
-            metadata["link"] = git_info["repository"]
-        if "commit" in git_info:
-            metadata["source_version"] = git_info["commit"]
+        if "repository" in git_info and "commit" in git_info:
+            if "build_info" not in metadata:
+                metadata["build_info"] = {}  # type: ignore
 
+            metadata["build_info"]["source_code_snapshot"] = (  # type: ignore
+                f"git+{git_info['repository']}#{git_info['commit']}"
+            )
     # Create the function code
     metadata_code = f"""
 
