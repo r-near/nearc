@@ -122,21 +122,21 @@ wheels = [
 
 [[package]]
 name = "near-abi-py"
-version = "0.1.0"
+version = "0.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "jsonschema" },
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/83/3f/65a5508a4f4b236774cef01ea7a984a31653740619fe107104ea51ed8bee/near_abi_py-0.1.0.tar.gz", hash = "sha256:e0f50c3dbea7bb0b2e25b4f701cb1a83c05f0eb40f8440512c6b6e7d30ad7ac7", size = 25089 }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/47/533897c53b3129e50b30ccee74beadae879bfe8eb6771590e1a4a634fb8d/near_abi_py-0.1.1.tar.gz", hash = "sha256:73fa1b84090606d7819420aa73c1703c60b68d17ea3768a2ee5bd05a1788d571", size = 25092 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/89/f2/aeb6ca04d28bb8bfdba61185335870849e58ded8a864312f5757b4fbff15/near_abi_py-0.1.0-py3-none-any.whl", hash = "sha256:1898cab94f09c42303b93d869af3616ee54d8b310b87a599784501ba1d698092", size = 14674 },
+    { url = "https://files.pythonhosted.org/packages/fb/d7/174fe423f43418a1b316c2791da68ba475859413f70ac96132d77dad4401/near_abi_py-0.1.1-py3-none-any.whl", hash = "sha256:2723ba9dc083641531ff409a726dfe36d15cd977ff48e2757b44629ef414c0f7", size = 14676 },
 ]
 
 [[package]]
 name = "nearc"
-version = "0.3.0"
+version = "0.3.3"
 source = { editable = "." }
 dependencies = [
     { name = "near-abi-py" },
@@ -155,7 +155,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "near-abi-py", specifier = ">=0.1.0" },
+    { name = "near-abi-py", specifier = ">=0.1.1" },
     { name = "rich", specifier = ">=13.9.4" },
     { name = "rich-click", specifier = ">=1.8.6" },
     { name = "types-zstd", specifier = ">=1.5.6.5.20250304" },
