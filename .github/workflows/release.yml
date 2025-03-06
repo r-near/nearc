@@ -2,7 +2,9 @@ name: Release
 
 on:
   workflow_dispatch:
-
+  push:
+    branches: [main]
+    
 jobs:
   pypi:
     name: Publish to PyPI
@@ -11,11 +13,13 @@ jobs:
       name: release
     permissions:
       id-token: write
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
             submodules: true
+            fetch-depth: 0
   
       - name: Initialize MicroPython submodules
         run: git -C src/nearc/micropython submodule update --init lib/micropython-lib
@@ -23,8 +27,13 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Build wheels
-        run: uv build
-        
+      - name: Create release
+        id: semantic_release
+        continue-on-error: true
+        run: uvx python-semantic-release -vv version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Publish to PyPI
+        if: steps.semantic_release.outcome == 'success'
         run: uv publish --trusted-publishing always

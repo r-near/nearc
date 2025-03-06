@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "near-abi-py>=0.1.1",
     "pathspec>=0.12.1",
+    "python-semantic-release>=9.21.0",
     "rich>=13.9.4",
     "rich-click>=1.8.6",
     "tomli-w>=1.2.0",
@@ -34,3 +35,10 @@ extend-exclude = ["micropython", "build"]
 
 [tool.mypy]
 exclude = ["micropython", "build"]
+
+[tool.semantic_release]
+version_variable = ["pyproject.toml:version"]
+branch = "main"
+changelog_file = "CHANGELOG.md"
+commit_message = "chore(release): {version} [skip ci]"
+build_command = "uv build"
