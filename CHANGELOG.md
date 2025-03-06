@@ -1,6 +1,20 @@
 # CHANGELOG
 
 
+## v0.5.0 (2025-03-06)
+
+### Features
+
+- **ci**: Add auto-release ([#16](https://github.com/r-near/nearc/pull/16),
+  [`7a73387`](https://github.com/r-near/nearc/commit/7a73387883bbd45e7a0cd281c8eaa18d91ff7307))
+
+* feat(release): Add auto-release
+
+* Run on main
+
+* Simplify package
+
+
 ## v0.4.0 (2025-03-06)
 
 ### Features
