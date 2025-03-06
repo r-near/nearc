@@ -12,6 +12,7 @@ from .analyzer import analyze_contract, find_imports
 from .manifest import prepare_build_files
 from .metadata import inject_metadata_function
 from .utils import console, run_command_with_progress, with_progress
+from .abi import inject_abi
 
 
 @with_progress("Building MicroPython cross-compiler")
@@ -149,8 +150,11 @@ def compile_contract(
     # Show a header for the compilation
     console.print(f"[bold cyan]Compiling NEAR Contract:[/] [yellow]{contract_path}[/]")
 
+    # Inject ABI
+    contract_with_abi = inject_abi(contract_path)
+
     # Inject metadata if needed
-    contract_with_metadata = inject_metadata_function(contract_path)
+    contract_with_metadata = inject_metadata_function(contract_with_abi)
 
     # Use the potentially modified contract for compilation
     # We'll analyze the original contract for exports and imports first to avoid confusion
@@ -185,6 +189,9 @@ def compile_contract(
     # Clean up temporary file if we created one
     if contract_with_metadata != contract_path and contract_with_metadata.exists():
         contract_with_metadata.unlink()
+
+    if contract_with_abi.exists():
+        contract_with_abi.unlink()
 
     # Verify the output file exists
     if not output_path.exists():
