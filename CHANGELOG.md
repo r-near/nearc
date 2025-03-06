@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.5.2 (2025-03-06)
+
+### Bug Fixes
+
+- **ci**: Don't publish, but build Docker image
+  ([`0dc7c2c`](https://github.com/r-near/nearc/commit/0dc7c2cec4b1f719b98ba51cd4fe8d18a463007a))
+
+
 ## v0.5.1 (2025-03-06)
 
 ### Bug Fixes
@@ -8,8 +16,18 @@
 - **ci**: Update version automatically
   ([`2a6eb45`](https://github.com/r-near/nearc/commit/2a6eb45e45475d9b3e8bec1f1368319abe7ff42d))
 
+### Chores
+
+- **release**: 0.5.1 [skip ci]
+  ([`480fa0f`](https://github.com/r-near/nearc/commit/480fa0fe1b453730793caae61eb4b3f0a184b775))
+
 
 ## v0.5.0 (2025-03-06)
+
+### Chores
+
+- **release**: 0.5.0 [skip ci]
+  ([`f35e90c`](https://github.com/r-near/nearc/commit/f35e90c265900d84282812fc54b24fbbcdf07a2e))
 
 ### Features
 
@@ -24,6 +42,11 @@
 
 
 ## v0.4.0 (2025-03-06)
+
+### Chores
+
+- **release**: 0.4.0 [skip ci]
+  ([`8d4b77e`](https://github.com/r-near/nearc/commit/8d4b77e6799bbcb21c53f7fb621091ad3f6dc947))
 
 ### Features
 
