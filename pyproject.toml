@@ -42,5 +42,5 @@ version_toml = [
 ]
 branch = "main"
 changelog_file = "CHANGELOG.md"
-commit_message = "chore(release): {version} [skip ci]"
+commit_message = "chore(release): {version} [build]"
 build_command = "uv build"

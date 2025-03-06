@@ -7,6 +7,7 @@ on:
     
 jobs:
   pypi:
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore(release):') }}
     name: Publish to PyPI
     runs-on: ubuntu-latest
     environment:
