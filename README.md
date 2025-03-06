@@ -83,7 +83,25 @@ The compiler automatically detects functions with `@near.export` and similar dec
 
 ## Contract Metadata (NEP-330)
 
-NEARC automatically adds NEP-330 compliant metadata to your contracts. You can customize the metadata by adding a `[tool.near.contract]` section to your `pyproject.toml` file:
+NEARC automatically adds NEP-330 compliant metadata to your contracts. You can customize the metadata in two ways:
+
+### Using Standard Project Metadata (PEP 621)
+
+You can use standard Python project metadata fields in your `pyproject.toml` file, which NEARC will automatically use to populate NEP-330 metadata:
+
+```toml
+[project]
+name = "my-near-contract"
+version = "0.2.0"
+description = "My NEAR smart contract"
+
+[project.urls]
+repository = "https://github.com/myorg/mycontract"
+```
+
+### Using NEAR-Specific Configuration
+
+For more advanced metadata and NEAR-specific fields, you can use the `[tool.near.contract]` section:
 
 ```toml
 [tool.near.contract]
@@ -93,7 +111,12 @@ standards = [
   { standard = "nep141", version = "1.0.0" },
   { standard = "nep148", version = "1.0.0" }
 ]
-build_info = { build_id = "12345" }
+build_info = {
+  build_environment = "docker.io/sourcescan/near-python@sha256:bf488476d9c4e49e36862bbdef2c595f88d34a295fd551cc65dc291553849471",
+  source_code_snapshot = "git+https://github.com/myorg/mycontract.git#main",
+  contract_path = ".",
+  build_command = ["nearc", "contract.py", "--no-debug"]
+}
 ```
 
 This will generate a `contract_source_metadata` function in your contract that returns:
@@ -107,11 +130,25 @@ This will generate a `contract_source_metadata` function in your contract that r
     { "standard": "nep148", "version": "1.0.0" },
     { "standard": "nep330", "version": "1.0.0" }
   ],
-  "build_info": { "build_id": "12345" }
+  "build_info": {
+    "build_environment": "docker.io/sourcescan/near-python@sha256:bf488476d9c4e49e36862bbdef2c595f88d34a295fd551cc65dc291553849471",
+    "source_code_snapshot": "git+https://github.com/myorg/mycontract.git#main",
+    "contract_path": ".",
+    "build_command": ["nearc", "contract.py", "--no-debug"]
+  }
 }
 ```
 
 If you already have a `contract_source_metadata` function in your contract, it will be preserved.
+
+### Metadata Field Priority
+
+When both standard project metadata and NEAR-specific configuration are present, NEARC uses the following priority order:
+
+1. Standard PEP 621 fields (`[project]` section)
+2. NEAR-specific fields (`[tool.near.contract]` section)
+
+The NEP-330 standard is always included in the standards list, ensuring compliance.
 
 ## How It Works
 
