@@ -1,0 +1,28 @@
+name: Linting, Type Checking, and Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Run ruff
+        run: uv run ruff check .
+
+      - name: Run ruff format (check mode)
+        run: uv run ruff format --check .
+
+      - name: Run mypy
+        run: uv run mypy .
