@@ -9,12 +9,15 @@ NEARC is a specialized compiler that transforms Python smart contracts into WebA
 - Automatic dependency detection and packaging
 - Optimized WebAssembly output
 - Automatic NEP-330 contract metadata compliance
+- **Reproducible builds for contract verification**
 
 ## Prerequisites
 
 - Python 3.11 or newer
 - [Emscripten](https://emscripten.org/docs/getting_started/) (emcc must be in PATH)
 - [uv](https://github.com/astral-sh/uv) for Python package management
+- [Docker](https://docs.docker.com/get-docker/) (for reproducible builds)
+- [Git](https://git-scm.com/downloads) (for reproducible builds)
 
 ## Getting Started
 
@@ -49,15 +52,23 @@ nearc contract.py --venv my-venv
 
 # Force rebuild
 nearc contract.py --rebuild
+
+# Initialize reproducible build configuration
+nearc contract.py --init-reproducible-config
+
+# Build reproducibly for contract verification
+nearc contract.py --reproducible
 ```
 
 ### Command Line Options
 
-| Option           | Description                                                |
-|------------------|------------------------------------------------------------|
-| `--output`, `-o` | Output WASM filename (default: derived from contract name) |
-| `--venv`         | Path to virtual environment (default: `.venv`)             |
-| `--rebuild`      | Force rebuild of all components                            |
+| Option                      | Description                                                |
+|-----------------------------|------------------------------------------------------------|
+| `--output`, `-o`           | Output WASM filename (default: derived from contract name) |
+| `--venv`                   | Path to virtual environment (default: `.venv`)             |
+| `--rebuild`                | Force rebuild of all components                            |
+| `--init-reproducible-config`| Initialize configuration for reproducible builds           |
+| `--reproducible`           | Build reproducibly in Docker for contract verification     |
 
 ## Writing NEAR Contracts in Python
 
@@ -80,6 +91,51 @@ def increment():
 ```
 
 The compiler automatically detects functions with `@near.export` and similar decorators, making them available as contract methods in the compiled WebAssembly.
+
+## Reproducible Builds and Contract Verification
+
+NEARC supports reproducible builds for contract verification, allowing users to verify that the deployed WASM matches the source code.
+
+### Setting Up Reproducible Builds
+
+1. Initialize the configuration:
+
+```bash
+nearc contract.py --init-reproducible-config
+```
+
+2. Update the generated configuration in `pyproject.toml` with the actual Docker image digest:
+
+```toml
+[tool.near.reproducible_build]
+image = "sourcescan/nearc:0.3.2-python-3.11"
+image_digest = "sha256:abcdef123456789abcdef123456789abcdef123456789abcdef123456789abc"
+container_build_command = ["nearc"]
+```
+
+3. Ensure your code is in a Git repository with all changes committed.
+
+4. Build reproducibly:
+
+```bash
+nearc contract.py --reproducible
+```
+
+### Verification Process
+
+After deploying your contract, it can be verified on platforms like NearBlocks through SourceScan:
+
+1. Find your contract on NearBlocks
+2. Go to the Contract Code tab
+3. Click "Verify and Publish"
+
+The verification tool will:
+- Extract the metadata from your contract
+- Clone the Git repository at the specified commit
+- Use the exact Docker image specified in your metadata
+- Build the contract and compare it with the on-chain version
+
+For detailed information, see our [Reproducible Builds Guide](docs/reproducible-builds.md).
 
 ## Contract Metadata (NEP-330)
 
@@ -111,12 +167,6 @@ standards = [
   { standard = "nep141", version = "1.0.0" },
   { standard = "nep148", version = "1.0.0" }
 ]
-build_info = {
-  build_environment = "docker.io/sourcescan/near-python@sha256:bf488476d9c4e49e36862bbdef2c595f88d34a295fd551cc65dc291553849471",
-  source_code_snapshot = "git+https://github.com/myorg/mycontract.git#main",
-  contract_path = ".",
-  build_command = ["nearc", "contract.py", "--no-debug"]
-}
 ```
 
 This will generate a `contract_source_metadata` function in your contract that returns:
@@ -131,10 +181,9 @@ This will generate a `contract_source_metadata` function in your contract that r
     { "standard": "nep330", "version": "1.0.0" }
   ],
   "build_info": {
-    "build_environment": "docker.io/sourcescan/near-python@sha256:bf488476d9c4e49e36862bbdef2c595f88d34a295fd551cc65dc291553849471",
-    "source_code_snapshot": "git+https://github.com/myorg/mycontract.git#main",
-    "contract_path": ".",
-    "build_command": ["nearc", "contract.py", "--no-debug"]
+    "build_environment": "ghcr.io/r-near/nearc:main",
+    "build_environment_digest": "sha256:abcdef123456789...",
+    "build_command": ["nearc"],
   }
 }
 ```
@@ -162,72 +211,6 @@ NEARC compiles Python smart contracts to WebAssembly through these steps:
 6. **Optimization** - Produces a compact WASM file ready for blockchain deployment
 
 The compiler handles dependency resolution automatically, making it easy to use Python libraries in your contracts (as long as they're compatible with MicroPython).
-
-
-## Reproducible Builds
-
-NEARC supports reproducible builds through Docker containers, ensuring that compiled WASM contracts can be verified by tools like SourceScan.
-
-### Setting Up for Reproducible Builds
-
-1. Initialize the reproducible build configuration in your project:
-
-```bash
-nearc contract.py --init-reproducible-config
-```
-
-This adds the required configuration to your `pyproject.toml` file. Update it with the correct Docker image digest found in our [GitHub releases](https://github.com/r-near/nearc/releases).
-
-### Example Configuration
-
-Your `pyproject.toml` should have a section like this:
-
-```toml
-[tool.near.reproducible_build]
-image = "rnear/nearc:0.3.2-python-3.11"
-image_digest = "sha256:abcdef123456789abcdef123456789abcdef123456789abcdef123456789abc"
-container_build_command = ["nearc"]
-```
-
-### Building Reproducibly
-
-To create a reproducible build:
-
-1. Ensure all your code is committed to a Git repository
-2. Run:
-
-```bash
-nearc contract.py --reproducible
-```
-
-This will:
-- Verify your Git repository is clean (all changes committed)
-- Pull the specified Docker image
-- Build your contract in the container
-- Generate a WASM file with embedded metadata for verification
-
-### Requirements for Verification
-
-For successful verification:
-- All code must be in a public Git repository
-- All changes must be committed before building
-- You must use the `--reproducible` flag for the build
-
-### Verification Process
-
-When your contract is deployed, verification tools like SourceScan will:
-1. Extract the metadata from your contract
-2. Pull the exact source code from your Git repository
-3. Build using the same Docker container specified in your metadata
-4. Compare the resulting WASM with what's deployed on-chain
-
-### Troubleshooting
-
-If verification fails:
-- Ensure you used `--reproducible` flag when building
-- Check that all code was committed before building
-- Verify you're using the correct Docker image and digest
-- Make sure your Git repository is public and accessible
 
 ## Development
 
