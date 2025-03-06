@@ -210,8 +210,12 @@ def run_reproducible_build(
         f"{abs_contract_dir}:/build",
         "-w",
         "/build",
+        "--entrypoint",
+        "/bin/sh",
         docker_image,
-    ] + build_command
+        "-c",
+        " ".join(build_command),
+    ]
 
     console.print(
         f"[cyan]Running reproducible build in Docker container: {docker_image}"
