@@ -14,8 +14,34 @@ from .builder import compile_contract
 from .utils import console
 
 
+def find_contract_file() -> Optional[Path]:
+    """
+    Automatically detect a contract file in the current directory.
+    Looks for __init__.py first, then main.py.
+
+    Returns:
+        Path to the contract file if found, None otherwise
+    """
+    current_dir = Path.cwd()
+
+    # Check for __init__.py
+    init_path = current_dir / "__init__.py"
+    if init_path.exists() and init_path.is_file():
+        return init_path
+
+    # Check for main.py
+    main_path = current_dir / "main.py"
+    if main_path.exists() and main_path.is_file():
+        return main_path
+
+    # No contract file found
+    return None
+
+
 @click.command()
-@click.argument("contract", type=click.Path(exists=True, dir_okay=False))
+@click.argument(
+    "contract", type=click.Path(exists=True, dir_okay=False), required=False
+)
 @click.option("--output", "-o", help="Output WASM file path")
 @click.option("--venv", help="Path to virtual environment", default=".venv")
 @click.option("--rebuild", is_flag=True, help="Force a clean rebuild")
@@ -28,16 +54,48 @@ from .utils import console
     help="Initialize reproducible build configuration in pyproject.toml",
 )
 def main(
-    contract: str,
+    contract: Optional[str],
     output: Optional[str],
     venv: str,
     rebuild: bool,
     reproducible: bool,
     init_reproducible_config: bool,
 ):
-    """Compile a Python contract to WebAssembly for NEAR blockchain."""
-    # Resolve paths
-    contract_path = Path(contract).resolve()
+    """Compile a Python contract to WebAssembly for NEAR blockchain.
+
+    If CONTRACT is not specified, looks for __init__.py or main.py in the current directory.
+    """
+    # Handle initialization of reproducible build configuration
+    if init_reproducible_config:
+        from .reproducible import init_reproducible_build_config
+
+        current_dir = Path.cwd()
+        if init_reproducible_build_config(current_dir):
+            console.print("[green]Reproducible build configuration initialized")
+        else:
+            console.print("[red]Failed to initialize reproducible build configuration")
+        sys.exit(0)
+
+    # Try to auto-detect contract file if not provided
+    contract_path = None
+    if contract:
+        contract_path = Path(contract).resolve()
+    else:
+        detected_contract = find_contract_file()
+        if detected_contract:
+            contract_path = detected_contract.resolve()
+            console.print(
+                f"[cyan]Auto-detected contract file:[/] [yellow]{contract_path}[/]"
+            )
+        else:
+            console.print(
+                "[red]Error: No contract file specified and could not auto-detect __init__.py or main.py"
+            )
+            console.print(
+                "[cyan]Please specify a contract file or create an __init__.py or main.py file"
+            )
+            sys.exit(1)
+
     contract_dir = contract_path.parent
     venv_path = Path(venv).resolve()
 
@@ -45,16 +103,6 @@ def main(
     if not output:
         output = f"{contract_path.stem}.wasm"
     output_path = Path(output).resolve()
-
-    # Handle initialization of reproducible build configuration
-    if init_reproducible_config:
-        from .reproducible import init_reproducible_build_config
-
-        if init_reproducible_build_config(contract_dir):
-            console.print("[green]Reproducible build configuration initialized")
-        else:
-            console.print("[red]Failed to initialize reproducible build configuration")
-        sys.exit(0)
 
     # If reproducible flag is set, build in Docker
     if reproducible:

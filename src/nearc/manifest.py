@@ -75,7 +75,12 @@ def generate_manifest(
 
         # Process external dependencies
         external_deps = []
+        local_deps = []
         rel_path = os.path.relpath(site_packages, manifest_path.parent).replace(
+            "\\", "/"
+        )
+        contract_dir = contract_path.parent
+        contract_rel_path = os.path.relpath(contract_dir, manifest_path.parent).replace(
             "\\", "/"
         )
 
@@ -83,8 +88,15 @@ def generate_manifest(
         for base_module in external_modules:
             module_dir = site_packages / base_module
             module_file = site_packages / f"{base_module}.py"
+            local_module_file = contract_dir / f"{base_module}.py"
 
-            if module_dir.is_dir():
+            # Check if it's a local module first
+            if local_module_file.exists():
+                local_deps.append(
+                    f'module("{base_module}.py", base_path="{contract_rel_path}")'
+                )
+            # Then check in site-packages
+            elif module_dir.is_dir():
                 external_deps.append(
                     f'package("{base_module}", base_path="{rel_path}")'
                 )
@@ -98,6 +110,10 @@ def generate_manifest(
         if external_deps:
             f.write("\n\n# External dependencies\n")
             f.write("\n".join(external_deps))
+
+        if local_deps:
+            f.write("\n\n# Local modules\n")
+            f.write("\n".join(local_deps))
 
         # Include the contract file
         f.write("\n\n# Contract\n")
