@@ -10,6 +10,7 @@ NEARC is a specialized compiler that transforms Python smart contracts into WebA
 - Optimized WebAssembly output
 - Automatic NEP-330 contract metadata compliance
 - **Reproducible builds for contract verification**
+- **Auto-detection of contract entrypoint files**
 
 ## Prerequisites
 
@@ -41,8 +42,11 @@ pip install nearc
 ## Usage
 
 ```bash
-# Basic usage
+# Basic usage with explicit contract file
 nearc contract.py
+
+# Auto-detect contract file (looks for __init__.py or main.py)
+nearc
 
 # Specify output file
 nearc contract.py -o my-contract.wasm
@@ -54,7 +58,7 @@ nearc contract.py --venv my-venv
 nearc contract.py --rebuild
 
 # Initialize reproducible build configuration
-nearc contract.py --init-reproducible-config
+nearc --init-reproducible-config
 
 # Build reproducibly for contract verification
 nearc contract.py --reproducible
@@ -64,11 +68,35 @@ nearc contract.py --reproducible
 
 | Option                      | Description                                                |
 |-----------------------------|------------------------------------------------------------|
+| `contract`                  | Path to contract file (optional - auto-detects if omitted) |
 | `--output`, `-o`           | Output WASM filename (default: derived from contract name) |
 | `--venv`                   | Path to virtual environment (default: `.venv`)             |
 | `--rebuild`                | Force rebuild of all components                            |
 | `--init-reproducible-config`| Initialize configuration for reproducible builds           |
 | `--reproducible`           | Build reproducibly in Docker for contract verification     |
+
+### Contract Entrypoint
+
+NEARC requires a single entrypoint file that contains all the exported functions (functions with `@near.export` or other export decorators). While your contract can span multiple files, all decorated functions must be in this entrypoint file.
+
+If you don't specify a contract file, NEARC will auto-detect the entrypoint by looking for:
+
+1. `__init__.py` in the current directory (first priority)
+2. `main.py` in the current directory (second priority)
+
+Best practices:
+- For simple contracts: Use a single file with all your code
+- For complex contracts: Use `__init__.py` as your entrypoint that imports and re-exports functions from other modules
+
+Example project structure:
+```
+my-contract/
+├── __init__.py      # Entrypoint with all @export decorators
+├── logic.py         # Supporting code (no export decorators)
+├── models.py        # Data models and utilities
+└── utils/
+    └── helpers.py   # Additional utilities
+```
 
 ## Writing NEAR Contracts in Python
 
