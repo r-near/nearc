@@ -124,6 +124,7 @@ def find_exports(file_path: Path) -> Set[str]:
     # Always include contract_source_metadata in exports
     # This ensures it's properly registered even if we need to inject it
     exports.add("contract_source_metadata")
+    exports.add("__contract_abi")
 
     return exports
 
