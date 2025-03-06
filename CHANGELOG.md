@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.5.1 (2025-03-06)
+
+### Bug Fixes
+
+- **ci**: Update version automatically
+  ([`2a6eb45`](https://github.com/r-near/nearc/commit/2a6eb45e45475d9b3e8bec1f1368319abe7ff42d))
+
+
 ## v0.5.0 (2025-03-06)
 
 ### Features
