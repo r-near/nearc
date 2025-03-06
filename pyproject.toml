@@ -37,7 +37,9 @@ extend-exclude = ["micropython", "build"]
 exclude = ["micropython", "build"]
 
 [tool.semantic_release]
-version_variable = ["pyproject.toml:version"]
+version_toml = [
+    "pyproject.toml:project.version"
+]
 branch = "main"
 changelog_file = "CHANGELOG.md"
 commit_message = "chore(release): {version} [skip ci]"
