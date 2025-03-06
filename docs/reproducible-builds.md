@@ -168,7 +168,7 @@ build-backend = "hatchling.build"
 
 [tool.near.reproducible_build]
 # Docker image, descriptor of build environment
-image = "sourcescan/nearc:0.3.2-python-3.11"
+image = "ghcr.io/r-near/nearc:main"
 # Tag after the colon serves only a descriptive purpose; image is identified by digest
 image_digest = "sha256:abcdef123456789abcdef123456789abcdef123456789abcdef123456789abc"
 # Build command inside the Docker container
