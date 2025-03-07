@@ -21,6 +21,7 @@ jobs:
         with:
             submodules: true
             fetch-depth: 0
+            persist-credentials: false
   
       - name: Initialize MicroPython submodules
         run: git -C src/nearc/micropython submodule update --init lib/micropython-lib
