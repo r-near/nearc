@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.6.0 (2025-03-07)
+
+### Features
+
+- **deps**: Bump near-abi-py ([#17](https://github.com/r-near/nearc/pull/17),
+  [`3beb9b8`](https://github.com/r-near/nearc/commit/3beb9b8b2505ea6cb473b752bde905d4ca7b85ae))
+
+
 ## v0.5.5 (2025-03-07)
 
 ### Bug Fixes
