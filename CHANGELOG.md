@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.5.5 (2025-03-07)
+
+### Bug Fixes
+
+- **ci**: Don't persist credentials so CI can use PAT
+  ([`9eb143a`](https://github.com/r-near/nearc/commit/9eb143ac664c6a89d5e262f51c5af4d0b250c978))
+
+
 ## v0.5.4 (2025-03-07)
 
 ### Bug Fixes
