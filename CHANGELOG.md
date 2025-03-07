@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.5.4 (2025-03-07)
+
+### Bug Fixes
+
+- **ci**: Use correct access token to trigger builds
+  ([`a4accc8`](https://github.com/r-near/nearc/commit/a4accc852f12de4478cf9497b744bfd85ef08736))
+
+
 ## v0.5.3 (2025-03-07)
 
 ### Bug Fixes
