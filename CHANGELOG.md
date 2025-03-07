@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.5.3 (2025-03-07)
+
+### Bug Fixes
+
+- **ci**: Allow triggering on workflow dispatch
+  ([`bca730a`](https://github.com/r-near/nearc/commit/bca730af23be6ffd24cb35db872490a2e9b15e5f))
+
+
 ## v0.5.2 (2025-03-06)
 
 ### Bug Fixes
