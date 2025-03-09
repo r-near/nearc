@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.6.1 (2025-03-09)
+
+### Bug Fixes
+
+- Update MicroPython ([#19](https://github.com/r-near/nearc/pull/19),
+  [`4219551`](https://github.com/r-near/nearc/commit/42195510edc9c1c5df0b82d0774b57b4ace20152))
+
+
 ## v0.6.0 (2025-03-07)
 
 ### Features
