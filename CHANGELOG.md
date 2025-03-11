@@ -1,6 +1,18 @@
 # CHANGELOG
 
 
+## v0.7.0 (2025-03-11)
+
+### Features
+
+- Add --single-file flag to skip local module discovery
+  ([#20](https://github.com/r-near/nearc/pull/20),
+  [`1e4e06b`](https://github.com/r-near/nearc/commit/1e4e06b0100f55862f474db0273e253ff483e018))
+
+Add a new CLI option to compile only the specified file without including other modules from the
+  same directory. This is useful for unit testing and isolated contract development.
+
+
 ## v0.6.1 (2025-03-09)
 
 ### Bug Fixes
