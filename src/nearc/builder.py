@@ -123,6 +123,7 @@ def compile_contract(
     venv_path: Path,
     assets_dir: Path,
     rebuild: bool = False,
+    single_file: bool = False,
 ) -> bool:
     """
     Compile a NEAR contract to WebAssembly with progress display.
@@ -133,6 +134,7 @@ def compile_contract(
         venv_path: Path to the virtual environment
         assets_dir: Path to the assets directory
         rebuild: Whether to force a clean rebuild
+        single_file: Whether to skip local module discovery and compile only the specified file
 
     Returns:
         True if compilation succeeded, False if it failed
@@ -149,6 +151,8 @@ def compile_contract(
 
     # Show a header for the compilation
     console.print(f"[bold cyan]Compiling NEAR Contract:[/] [yellow]{contract_path}[/]")
+    if single_file:
+        console.print("[cyan]Single file mode: skipping local module discovery[/]")
 
     # Inject ABI
     contract_with_abi = inject_abi(contract_path)
@@ -167,7 +171,7 @@ def compile_contract(
 
     # Generate build files
     manifest_file, wrappers_path = prepare_build_files(
-        contract_with_metadata, imports, exports, venv_path, build_dir
+        contract_with_metadata, imports, exports, venv_path, build_dir, single_file
     )
 
     # Build MicroPython cross-compiler if needed

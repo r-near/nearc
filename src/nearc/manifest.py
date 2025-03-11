@@ -21,6 +21,7 @@ class ManifestGenerator:
         exports: Set[str],
         venv_path: Path,
         build_dir: Path,
+        single_file: bool = False,
     ):
         self.contract_path = contract_path
         self.imports = imports
@@ -31,6 +32,7 @@ class ManifestGenerator:
         self.site_packages = self._get_site_packages()
         self.excluded_stdlib_packages = self._get_excluded_stdlib_packages()
         self.gitignore_spec = self._load_gitignore_spec()
+        self.single_file = single_file
 
     def _get_site_packages(self) -> Path:
         """Get the site-packages directory from the virtual environment."""
@@ -111,7 +113,13 @@ class ManifestGenerator:
 
     def find_local_modules(self) -> List[Path]:
         """Find all local Python modules in the contract directory, respecting .gitignore."""
-        local_modules = []
+        local_modules: List[Path] = []
+
+        # If single_file mode is enabled, skip looking for local modules
+        if self.single_file:
+            console.print("[cyan]Single file mode: skipping local module discovery[/]")
+            return local_modules
+
         always_exclude = [".git", ".venv", "venv", "__pycache__", "build"]
 
         console.print("[cyan]Scanning for local Python modules...[/]")
@@ -296,6 +304,7 @@ def prepare_build_files(
     exports: Set[str],
     venv_path: Path,
     build_dir: Path,
+    single_file: bool = False,
 ) -> Tuple[Path, Path]:
     """
     Generate manifest and wrapper files for NEAR contract compilation.
@@ -306,9 +315,12 @@ def prepare_build_files(
         exports: Set of exported function names
         venv_path: Path to the virtual environment
         build_dir: Path to the build directory
+        single_file: Whether to skip local module discovery and compile only the specified file
 
     Returns:
         Tuple of (manifest_path, wrappers_path)
     """
-    generator = ManifestGenerator(contract_path, imports, exports, venv_path, build_dir)
+    generator = ManifestGenerator(
+        contract_path, imports, exports, venv_path, build_dir, single_file
+    )
     return generator.generate()
