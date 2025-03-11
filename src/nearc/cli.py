@@ -53,6 +53,11 @@ def find_contract_file() -> Optional[Path]:
     is_flag=True,
     help="Initialize reproducible build configuration in pyproject.toml",
 )
+@click.option(
+    "--single-file",
+    is_flag=True,
+    help="Skip local module discovery, compile only the specified file",
+)
 def main(
     contract: Optional[str],
     output: Optional[str],
@@ -60,6 +65,7 @@ def main(
     rebuild: bool,
     reproducible: bool,
     init_reproducible_config: bool,
+    single_file: bool,
 ):
     """Compile a Python contract to WebAssembly for NEAR blockchain.
 
@@ -111,6 +117,8 @@ def main(
         build_args = []
         if rebuild:
             build_args.append("--rebuild")
+        if single_file:
+            build_args.append("--single-file")
 
         # Run reproducible build in Docker
         if not run_reproducible_build(contract_path, output_path, build_args):
@@ -142,7 +150,9 @@ def main(
         sys.exit(1)
 
     # Compile the contract
-    if not compile_contract(contract_path, output_path, venv_path, assets_dir, rebuild):
+    if not compile_contract(
+        contract_path, output_path, venv_path, assets_dir, rebuild, single_file
+    ):
         sys.exit(1)
 
 
