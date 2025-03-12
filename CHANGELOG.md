@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.7.1 (2025-03-12)
+
+### Bug Fixes
+
+- **analyzer**: Add `multi_callback` decorator
+  ([`cc6a86c`](https://github.com/r-near/nearc/commit/cc6a86c37627b6c4caa3af067d8c8faf318e108d))
+
+
 ## v0.7.0 (2025-03-11)
 
 ### Features
