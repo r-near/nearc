@@ -92,7 +92,15 @@ def find_exports(file_path: Path) -> Set[str]:
     with open(file_path) as f:
         tree = ast.parse(f.read())
 
-    export_decorators = {"export", "view", "call", "init", "callback", "near.export"}
+    export_decorators = {
+        "export",
+        "view",
+        "call",
+        "init",
+        "callback",
+        "multi_callback",
+        "near.export",
+    }
     exports = set()
 
     for node in ast.walk(tree):

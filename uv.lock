@@ -1,5 +1,4 @@
 version = 1
-revision = 1
 requires-python = ">=3.11"
 
 [[package]]
@@ -338,7 +337,7 @@ wheels = [
 
 [[package]]
 name = "nearc"
-version = "0.5.4"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "near-abi-py" },
