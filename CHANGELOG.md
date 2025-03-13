@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.7.2 (2025-03-13)
+
+### Bug Fixes
+
+- **micropython**: Update to latest ([#22](https://github.com/r-near/nearc/pull/22),
+  [`613241d`](https://github.com/r-near/nearc/commit/613241de03021bae6d20adfea2ad999bd2169e02))
+
+
 ## v0.7.1 (2025-03-12)
 
 ### Bug Fixes
