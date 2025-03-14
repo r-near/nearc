@@ -13,6 +13,7 @@ from .manifest import prepare_build_files
 from .metadata import inject_metadata_function
 from .utils import console, run_command_with_progress, with_progress
 from .abi import inject_abi
+from .exports import inject_contract_exports
 
 
 @with_progress("Building MicroPython cross-compiler")
@@ -154,8 +155,11 @@ def compile_contract(
     if single_file:
         console.print("[cyan]Single file mode: skipping local module discovery[/]")
 
+    # Inject exports for class-based contracts
+    contract_with_exports = inject_contract_exports(contract_path)
+
     # Inject ABI
-    contract_with_abi = inject_abi(contract_path)
+    contract_with_abi = inject_abi(contract_with_exports)
 
     # Inject metadata if needed
     contract_with_metadata = inject_metadata_function(contract_with_abi)
