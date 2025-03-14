@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.8.0 (2025-03-14)
+
+### Features
+
+- Auto inject exports ([#25](https://github.com/r-near/nearc/pull/25),
+  [`a84de7e`](https://github.com/r-near/nearc/commit/a84de7eb62731e83c0afce68658daf09ee081605))
+
+
 ## v0.7.3 (2025-03-14)
 
 ### Bug Fixes
