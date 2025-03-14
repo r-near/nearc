@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.7.3 (2025-03-14)
+
+### Bug Fixes
+
+- Check for C keywords in export function names ([#24](https://github.com/r-near/nearc/pull/24),
+  [`3b10901`](https://github.com/r-near/nearc/commit/3b109019d5a6463438f4a5adc4d3e99a0df7ee59))
+
+
 ## v0.7.2 (2025-03-13)
 
 ### Bug Fixes
