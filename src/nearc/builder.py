@@ -201,6 +201,9 @@ def compile_contract(
     if contract_with_abi.exists():
         contract_with_abi.unlink()
 
+    if contract_with_exports.exists():
+        contract_with_exports.unlink()
+
     # Verify the output file exists
     if not output_path.exists():
         console.print(f"[red]Error: Output file {output_path} was not created")
