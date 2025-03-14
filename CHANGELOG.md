@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.8.1 (2025-03-14)
+
+### Bug Fixes
+
+- **builder**: Cleanup files
+  ([`35a3a26`](https://github.com/r-near/nearc/commit/35a3a269308f02ed5c364af26a18fb411d3c48a8))
+
+
 ## v0.8.0 (2025-03-14)
 
 ### Features
