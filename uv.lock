@@ -554,7 +554,7 @@ wheels = [
 
 [[package]]
 name = "rich-click"
-version = "1.8.6"
+version = "1.8.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
