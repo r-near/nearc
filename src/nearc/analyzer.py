@@ -4,6 +4,7 @@ Code analysis tools for the NEAR Python contract compiler.
 """
 
 import ast
+import sys
 import tomllib
 from pathlib import Path
 from typing import Set, List
@@ -77,6 +78,67 @@ MPY_STDLIB_PACKAGES = [
     "venv",
 ]
 NEAR_MODULE_NAME = "near"
+
+
+def validate_export_names(exports: Set[str]) -> List[str]:
+    """
+    Validate export names against C reserved keywords.
+
+    Args:
+        exports: Set of function names that are marked as NEAR exports
+
+    Returns:
+        List of invalid export names that are C keywords
+    """
+    c_keywords = {
+        "auto",
+        "break",
+        "case",
+        "char",
+        "const",
+        "continue",
+        "default",
+        "do",
+        "double",
+        "else",
+        "enum",
+        "extern",
+        "float",
+        "for",
+        "goto",
+        "if",
+        "inline",
+        "int",
+        "long",
+        "register",
+        "restrict",
+        "return",
+        "short",
+        "signed",
+        "sizeof",
+        "static",
+        "struct",
+        "switch",
+        "typedef",
+        "union",
+        "unsigned",
+        "void",
+        "volatile",
+        "while",
+        # C99 and later keywords
+        "_Alignas",
+        "_Alignof",
+        "_Atomic",
+        "_Bool",
+        "_Complex",
+        "_Generic",
+        "_Imaginary",
+        "_Noreturn",
+        "_Static_assert",
+        "_Thread_local",
+    }
+
+    return [export for export in exports if export in c_keywords]
 
 
 def find_exports(file_path: Path) -> Set[str]:
@@ -226,6 +288,17 @@ def analyze_contract(contract_path: Path) -> tuple[Set[str], Set[str]]:
     console.print("[cyan]Analyzing contract...[/]", end="")
     exports = find_exports(contract_path)
     imports = find_imports(contract_path)
+
+    # Check for invalid export names (C keywords)
+    invalid_exports = validate_export_names(exports)
+    if invalid_exports:
+        console.print(" [red]Error: Invalid export function names[/]")
+        for invalid_export in invalid_exports:
+            console.print(
+                f"  [red]'{invalid_export}' is a C reserved keyword and cannot be used as an export function name[/]"
+            )
+        console.print("[yellow]Please rename these functions in your contract.[/]")
+        sys.exit(1)
 
     # Show analysis results
     if not exports:
