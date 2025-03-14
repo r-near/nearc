@@ -698,7 +698,7 @@ wheels = [
 
 [[package]]
 name = "types-zstd"
-version = "1.5.6.5.20250304"
+version = "1.5.6.6.20250306"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/17/99/0ccf118e4963a621c509c03e540e51f3aa02892a8bb8d6524af220ddff72/types_zstd-1.5.6.5.20250304.tar.gz", hash = "sha256:760a2df64c6edb0d1d4de74533810c1a9b1d3024b50b4e0cbf53aa3dce145085", size = 7741 }
 wheels = [
