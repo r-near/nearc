@@ -1,6 +1,15 @@
-FROM python:3.11-slim-bookworm
+FROM --platform=$BUILDPLATFORM python:3.11-slim-bookworm AS base
 
-# Install required packages including Emscripten
+# For EMSDK, specify the platform explicitly
+FROM --platform=$BUILDPLATFORM docker.io/emscripten/emsdk:latest AS emsdk-source
+
+# For UV, specify the platform explicitly  
+FROM --platform=$BUILDPLATFORM ghcr.io/astral-sh/uv:latest AS uv-source
+
+# Back to the main build
+FROM --platform=$TARGETPLATFORM python:3.11-slim-bookworm
+
+# Install required packages
 RUN apt-get update && apt-get install -y \
     git \
     make \
@@ -13,11 +22,11 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Copy UV from the source stage
+COPY --from=uv-source /uv /uvx /bin/
 
-# Copy emsdk from Emscripten
-COPY --from=docker.io/emscripten/emsdk:latest /emsdk /emsdk
+# Copy EMSDK from the source stage
+COPY --from=emsdk-source /emsdk /emsdk
 ENV PATH="/emsdk:/emsdk/node/20.18.0_64bit/bin:/emsdk/upstream/emscripten:${PATH}"
 
 ENV EMSDK="/emsdk"
