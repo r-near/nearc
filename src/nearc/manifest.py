@@ -5,9 +5,9 @@ Build manifest generation for the NEAR Python contract compiler.
 
 import os
 from pathlib import Path
-from typing import Set, List, Tuple, Optional, Any
+from typing import Any, List, Optional, Set, Tuple
 
-from .analyzer import is_micropython_module, MPY_STDLIB_PACKAGES
+from .analyzer import MPY_STDLIB_PACKAGES, is_micropython_module
 from .utils import console, find_site_packages
 
 

@@ -8,11 +8,11 @@ import sys
 from pathlib import Path
 from typing import Set
 
+from .abi import inject_abi
 from .analyzer import analyze_contract, find_imports
 from .manifest import prepare_build_files
 from .metadata import inject_metadata_function
 from .utils import console, run_command_with_progress, with_progress
-from .abi import inject_abi
 from .exports import inject_contract_exports
 
 
