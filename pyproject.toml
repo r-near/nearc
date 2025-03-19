@@ -5,7 +5,7 @@ description = "Python to WebAssembly compiler for NEAR smart contracts"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "near-abi-py>=0.3.0",
+    "near-abi-py>=0.4.0",
     "pathspec>=0.12.1",
     "python-semantic-release>=9.21.0",
     "rich>=13.9.4",
