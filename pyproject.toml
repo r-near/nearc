@@ -47,6 +47,3 @@ branch = "main"
 changelog_file = "CHANGELOG.md"
 commit_message = "chore(release): {version} [build]"
 build_command = "uv build"
-
-[tool.uv.workspace]
-members = ["example"]
