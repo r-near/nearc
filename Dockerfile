@@ -40,7 +40,7 @@ COPY src/ pyproject.toml uv.lock README.md /app/
 RUN uv tool install .
 
 # Set working directory for build outputs
-WORKDIR /build
+WORKDIR /home/near/code
 
 # Set entrypoint to nearc with automatic dependency setup
 ENTRYPOINT ["nearc", "--create-venv"]
