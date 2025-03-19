@@ -59,21 +59,6 @@ def setup_venv(venv_path: Path, project_dir: Path) -> bool:
 
     # First, try to use uv if available
     if shutil.which("uv"):
-        # Initialize venv with uv
-        if not run_command_with_progress(
-            ["uv", "init"],
-            cwd=project_dir,
-            description="Initializing virtual environment with uv",
-        ):
-            # If uv init fails, try Python's venv
-            if not run_command_with_progress(
-                [sys.executable, "-m", "venv", str(venv_path)],
-                cwd=project_dir,
-                description="Creating virtual environment",
-            ):
-                console.print("[red]Failed to create virtual environment")
-                return False
-
         # Install dependencies with uv
         if not run_command_with_progress(
             ["uv", "sync"],

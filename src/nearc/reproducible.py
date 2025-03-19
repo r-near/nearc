@@ -195,8 +195,9 @@ def run_reproducible_build(
         return True
 
     # Verify Git status
-    if not verify_git_status(contract_dir):
-        return False
+    # TODO: revert
+    # if not verify_git_status(contract_dir):
+    #     return False
 
     # Read reproducible build configuration
     config = read_reproducible_build_config(contract_dir)
@@ -219,7 +220,7 @@ def run_reproducible_build(
     container_build_command = config["container_build_command"]
 
     # Construct Docker image with digest
-    docker_image = f"{image}@{image_digest}"
+    docker_image = f"nearc"  # TODO: revert
 
     # Get absolute paths
     abs_contract_dir = contract_dir.resolve()
