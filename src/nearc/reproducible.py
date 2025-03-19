@@ -239,8 +239,7 @@ def run_reproducible_build(
 
     # Run Docker container
     docker_cmd = [
-        "sudo",
-        "podman",
+        "docker",
         "run",
         "--rm",
         "-v",
