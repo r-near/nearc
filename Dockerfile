@@ -1,6 +1,6 @@
 FROM python:3.11-slim-bookworm
 
-# Install required packages including Emscripten
+# Install required packages and Homebrew dependencies
 RUN apt-get update && apt-get install -y \
     git \
     make \
@@ -9,23 +9,33 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     wget \
+    curl \
     xz-utils \
     ca-certificates \
+    build-essential \
+    procps \
+    file \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Homebrew
+RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
+
+# Install Emscripten using Homebrew
+RUN brew install emscripten
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Copy emsdk from Emscripten
-COPY --from=docker.io/emscripten/emsdk:latest /emsdk /emsdk
-ENV PATH="/emsdk:/emsdk/node/20.18.0_64bit/bin:/emsdk/upstream/emscripten:${PATH}"
-
-ENV EMSDK="/emsdk"
-ENV EMSCRIPTEN="/emsdk/upstream/emscripten"
+# Set environment variables for Emscripten
+ENV EMSDK="$(brew --prefix emscripten)/libexec"
+ENV EMSCRIPTEN="$(brew --prefix emscripten)/libexec/upstream/emscripten"
+ENV PATH="${EMSCRIPTEN}:${PATH}"
 
 # Mark as running in a container
 ENV CONTAINER="1"
 
+# Verify Emscripten installation
 RUN emcc -v
 
 ENV PATH="/root/.local/bin:$PATH"
