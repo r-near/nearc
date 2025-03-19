@@ -11,7 +11,7 @@ from typing import Optional
 import rich_click as click
 
 from .builder import compile_contract
-from .utils import console
+from .utils import console, is_running_in_container, setup_venv
 
 
 def find_contract_file() -> Optional[Path]:
@@ -58,6 +58,11 @@ def find_contract_file() -> Optional[Path]:
     is_flag=True,
     help="Skip local module discovery, compile only the specified file",
 )
+@click.option(
+    "--create-venv",
+    is_flag=True,
+    help="Force setup of virtual environment before building",
+)
 def main(
     contract: Optional[str],
     output: Optional[str],
@@ -66,6 +71,7 @@ def main(
     reproducible: bool,
     init_reproducible_config: bool,
     single_file: bool,
+    create_venv: bool,
 ):
     """Compile a Python contract to WebAssembly for NEAR blockchain.
 
@@ -103,6 +109,7 @@ def main(
             sys.exit(1)
 
     venv_path = Path(venv).resolve()
+    contract_dir = contract_path.parent
 
     # Determine output path if not specified
     if not output:
@@ -127,10 +134,24 @@ def main(
 
         sys.exit(0)
 
-    # Check that virtual environment exists
-    if not venv_path.exists():
+    # Check for container environment and set up venv if needed
+    in_container = is_running_in_container()
+    if in_container:
+        console.print(
+            "[cyan]Detected running in container, setting up environment automatically[/]"
+        )
+        if not setup_venv(venv_path, contract_dir):
+            console.print("[red]Failed to set up virtual environment in container")
+            sys.exit(1)
+    elif create_venv:
+        # User explicitly requested venv setup
+        if not setup_venv(venv_path, contract_dir):
+            console.print("[red]Failed to set up virtual environment")
+            sys.exit(1)
+    elif not venv_path.exists():
         console.print(f"[red]Error: Virtual environment not found at {venv_path}")
         console.print("[cyan]Create one with: uv init")
+        console.print("[cyan]Or run with --create-venv to create it automatically")
         sys.exit(1)
 
     # Check that emcc is available

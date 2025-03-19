@@ -3,15 +3,96 @@
 Utility functions for the NEAR Python contract compiler.
 """
 
+import os
+import shutil
 import subprocess
+import sys
 from pathlib import Path
-from typing import List, Optional, Callable, Any
+from typing import Any, Callable, List, Optional
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn, TaskID
+from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn, TimeElapsedColumn
 
 # Global console instance for printing messages
 console = Console()
+
+
+def is_running_in_container() -> bool:
+    """
+    Detect if we're running inside a container.
+
+    Returns:
+        True if running in a container, False otherwise
+    """
+    # Common indicators for Docker/Podman containers
+    # 1. Check for /.dockerenv file
+    if Path("/.dockerenv").exists():
+        return True
+
+    # 2. Check cgroup
+    try:
+        with open("/proc/1/cgroup", "r") as f:
+            if "docker" in f.read() or "podman" in f.read():
+                return True
+    except (FileNotFoundError, IOError):
+        pass
+
+    # 3. Check container environment variables
+    if os.environ.get("CONTAINER", "") or os.environ.get("PODMAN_CONTAINER", ""):
+        return True
+
+    return False
+
+
+def setup_venv(venv_path: Path, project_dir: Path) -> bool:
+    """
+    Set up a virtual environment and install dependencies.
+
+    Args:
+        venv_path: Path to the virtual environment
+        project_dir: Path to the project directory with pyproject.toml
+
+    Returns:
+        True if successful, False otherwise
+    """
+    console.print(f"[cyan]Setting up virtual environment at {venv_path}...[/]")
+
+    # First, try to use uv if available
+    if shutil.which("uv"):
+        # Install dependencies with uv
+        if not run_command_with_progress(
+            ["uv", "sync"],
+            cwd=project_dir,
+            description="Installing dependencies with uv",
+        ):
+            console.print("[red]Failed to install dependencies with uv")
+            return False
+    else:
+        # Fallback to standard pip-based workflow
+        # Create venv
+        if not run_command_with_progress(
+            [sys.executable, "-m", "venv", str(venv_path)],
+            cwd=project_dir,
+            description="Creating virtual environment",
+        ):
+            console.print("[red]Failed to create virtual environment")
+            return False
+
+        # Install pip requirements using pyproject.toml
+        pip_executable = venv_path / "bin" / "pip"
+        if not pip_executable.exists():
+            pip_executable = venv_path / "Scripts" / "pip.exe"  # Windows path
+
+        if not run_command_with_progress(
+            [str(pip_executable), "install", "-e", "."],
+            cwd=project_dir,
+            description="Installing dependencies",
+        ):
+            console.print("[red]Failed to install dependencies")
+            return False
+
+    console.print("[green]Virtual environment setup complete[/]")
+    return True
 
 
 def run_command_with_progress(

@@ -8,12 +8,12 @@ import sys
 from pathlib import Path
 from typing import Set
 
+from .abi import inject_abi
 from .analyzer import analyze_contract, find_imports
+from .exports import inject_contract_exports
 from .manifest import prepare_build_files
 from .metadata import inject_metadata_function
 from .utils import console, run_command_with_progress, with_progress
-from .abi import inject_abi
-from .exports import inject_contract_exports
 
 
 @with_progress("Building MicroPython cross-compiler")
@@ -198,10 +198,10 @@ def compile_contract(
     if contract_with_metadata != contract_path and contract_with_metadata.exists():
         contract_with_metadata.unlink()
 
-    if contract_with_abi.exists():
+    if contract_with_abi != contract_path and contract_with_abi.exists():
         contract_with_abi.unlink()
 
-    if contract_with_exports.exists():
+    if contract_with_exports != contract_path and contract_with_exports.exists():
         contract_with_exports.unlink()
 
     # Verify the output file exists

@@ -4,9 +4,9 @@ Contract metadata handling for the NEAR Python contract compiler.
 """
 
 import json
-from pathlib import Path
-from typing import Dict, Any
 import tomllib
+from pathlib import Path
+from typing import Any, Dict
 
 from .utils import console
 

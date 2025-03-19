@@ -4,12 +4,13 @@ Reproducible builds module for the NEAR Python contract compiler.
 """
 
 import subprocess
-from pathlib import Path
-from typing import Dict, Any, List
 import tomllib
+from pathlib import Path
+from typing import Any, Dict, List
+
 import tomli_w
 
-from .utils import console, run_command_with_progress
+from .utils import console, is_running_in_container, run_command_with_progress
 
 
 def get_git_info(contract_dir: Path) -> Dict[str, Any]:
@@ -88,6 +89,12 @@ def verify_git_status(contract_dir: Path) -> bool:
     Returns:
         True if the repository is clean and has a remote, False otherwise
     """
+    # Skip Git checks if we're in a container - the container might have
+    # received files without Git history
+    if is_running_in_container():
+        console.print("[yellow]Running in container, skipping Git status checks")
+        return True
+
     git_info = get_git_info(contract_dir)
 
     if not git_info:
@@ -162,6 +169,33 @@ def run_reproducible_build(
     """
     contract_dir = contract_path.parent
 
+    # Check if we're already in a container
+    if is_running_in_container():
+        console.print(
+            "[yellow]Warning: Already running in a container, skipping container build"
+        )
+        console.print("[cyan]Running local build instead...")
+
+        # Add --create-venv flag to ensure dependencies are installed
+        if "--create-venv" not in build_args:
+            build_args.append("--create-venv")
+
+        # Run nearc directly
+        import sys
+
+        from .cli import main
+
+        # Prepare args for click command
+        cli_args = [str(contract_path)]
+        if output_path:
+            cli_args.extend(["--output", str(output_path)])
+        cli_args.extend(build_args)
+
+        # Replace sys.argv and run main
+        sys.argv = ["nearc"] + cli_args
+        main()
+        return True
+
     # Verify Git status
     if not verify_git_status(contract_dir):
         return False
@@ -200,6 +234,10 @@ def run_reproducible_build(
         build_command
     ):
         build_command.extend(["-o", rel_output_path])
+
+    # Add create-venv flag to ensure dependencies are installed in the container
+    if "--create-venv" not in " ".join(build_command):
+        build_command.append("--create-venv")
 
     # Run Docker container
     docker_cmd = [

@@ -5,8 +5,9 @@ Contract metadata handling for the NEAR Python contract compiler.
 
 import json
 from pathlib import Path
-from near_abi_py import generate_abi
+
 import zstd
+from near_abi_py import generate_abi
 
 from .utils import console
 

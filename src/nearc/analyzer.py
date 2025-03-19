@@ -7,7 +7,7 @@ import ast
 import sys
 import tomllib
 from pathlib import Path
-from typing import Set, List
+from typing import List, Set
 
 from .utils import console
 
