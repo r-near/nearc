@@ -198,10 +198,10 @@ def compile_contract(
     if contract_with_metadata != contract_path and contract_with_metadata.exists():
         contract_with_metadata.unlink()
 
-    if contract_with_abi.exists():
+    if contract_with_abi != contract_path and contract_with_abi.exists():
         contract_with_abi.unlink()
 
-    if contract_with_exports.exists():
+    if contract_with_exports != contract_path and contract_with_exports.exists():
         contract_with_exports.unlink()
 
     # Verify the output file exists
