@@ -1,6 +1,15 @@
 # CHANGELOG
 
 
+## v0.8.4 (2025-03-19)
+
+### Bug Fixes
+
+- **reproducible**: Update Docker mount path to /home/near/code
+  ([#36](https://github.com/r-near/nearc/pull/36),
+  [`bdde77f`](https://github.com/r-near/nearc/commit/bdde77f97be6666d44f71be3481b0ceaafb69f4c))
+
+
 ## v0.8.3 (2025-03-19)
 
 ### Bug Fixes
