@@ -4,12 +4,13 @@ Reproducible builds module for the NEAR Python contract compiler.
 """
 
 import subprocess
-from pathlib import Path
-from typing import Dict, Any, List
 import tomllib
+from pathlib import Path
+from typing import Any, Dict, List
+
 import tomli_w
 
-from .utils import console, run_command_with_progress, is_running_in_container
+from .utils import console, is_running_in_container, run_command_with_progress
 
 
 def get_git_info(contract_dir: Path) -> Dict[str, Any]:
@@ -180,8 +181,9 @@ def run_reproducible_build(
             build_args.append("--create-venv")
 
         # Run nearc directly
-        from .cli import main
         import sys
+
+        from .cli import main
 
         # Prepare args for click command
         cli_args = [str(contract_path)]
