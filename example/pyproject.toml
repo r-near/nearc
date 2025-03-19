@@ -9,3 +9,4 @@ dependencies = []
 [tool.near.reproducible_build]
 image = "nearc:latest"
 container_build_command = ["nearc"]
+image_digest = "sha256:104832974b9fb01fa5f60cdc62182c5120b16a5df5b177fc567143067d736171"
