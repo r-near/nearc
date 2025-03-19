@@ -1,6 +1,74 @@
 # CHANGELOG
 
 
+## v0.8.2 (2025-03-19)
+
+### Bug Fixes
+
+- **reproducible**: Automatically set up dependencies in container builds
+  ([#35](https://github.com/r-near/nearc/pull/35),
+  [`2fff8f8`](https://github.com/r-near/nearc/commit/2fff8f84be8eaa19430bebb74ef501ee8a268106))
+
+* save
+
+* cleanup
+
+* lockfile
+
+* linting
+
+* Lockfile issues
+
+### Chores
+
+- **deps**: Bump near-abi-py from 0.3.0 to 0.4.0 ([#29](https://github.com/r-near/nearc/pull/29),
+  [`b09efe4`](https://github.com/r-near/nearc/commit/b09efe4b69235c175a31ade04c860bb113ea00c2))
+
+Bumps near-abi-py from 0.3.0 to 0.4.0.
+
+--- updated-dependencies: - dependency-name: near-abi-py dependency-type: direct:production
+
+update-type: version-update:semver-minor ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump rich-click from 1.8.6 to 1.8.8 ([#27](https://github.com/r-near/nearc/pull/27),
+  [`fb276d0`](https://github.com/r-near/nearc/commit/fb276d082b400df8246e20d42776acc119884e7c))
+
+Bumps [rich-click](https://github.com/ewels/rich-click) from 1.8.6 to 1.8.8. - [Release
+  notes](https://github.com/ewels/rich-click/releases) -
+  [Changelog](https://github.com/ewels/rich-click/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/ewels/rich-click/compare/v1.8.6...v1.8.8)
+
+--- updated-dependencies: - dependency-name: rich-click dependency-type: direct:production
+
+update-type: version-update:semver-patch ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump types-zstd from 1.5.6.5.20250304 to 1.5.6.6.20250306
+  ([#26](https://github.com/r-near/nearc/pull/26),
+  [`d9ac0ab`](https://github.com/r-near/nearc/commit/d9ac0ab74c28c46f5621c627dc4cbee0a0636369))
+
+Bumps [types-zstd](https://github.com/python/typeshed) from 1.5.6.5.20250304 to 1.5.6.6.20250306. -
+  [Commits](https://github.com/python/typeshed/commits)
+
+--- updated-dependencies: - dependency-name: types-zstd dependency-type: direct:production
+
+update-type: version-update:semver-patch ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Create dependabot.yml
+  ([`66b7f70`](https://github.com/r-near/nearc/commit/66b7f7076f67c03831431f9bad8f6d57f25a8b13))
+
+
 ## v0.8.1 (2025-03-14)
 
 ### Bug Fixes
