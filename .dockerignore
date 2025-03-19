@@ -1,0 +1,4 @@
+.venv
+.venv/*
+example/.venv
+example/.venv/*

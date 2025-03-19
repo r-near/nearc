@@ -13,7 +13,6 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
@@ -24,8 +23,10 @@ ENV PATH="/emsdk:/emsdk/node/20.18.0_64bit/bin:/emsdk/upstream/emscripten:${PATH
 ENV EMSDK="/emsdk"
 ENV EMSCRIPTEN="/emsdk/upstream/emscripten"
 
-RUN emcc -v
+# Mark as running in a container
+ENV CONTAINER="1"
 
+RUN emcc -v
 
 ENV PATH="/root/.local/bin:$PATH"
 
@@ -35,12 +36,11 @@ WORKDIR /app
 # Copy your project files to the container
 COPY src/ pyproject.toml uv.lock README.md /app/
 
-
 # Install nearc
 RUN uv tool install .
 
 # Set working directory for build outputs
 WORKDIR /build
 
-# Set entrypoint to nearc
-ENTRYPOINT ["nearc"]
+# Set entrypoint to nearc with automatic dependency setup
+ENTRYPOINT ["nearc", "--create-venv"]
