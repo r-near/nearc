@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.8.3 (2025-03-19)
+
+### Bug Fixes
+
+- **ci**: Support multi-platform builds ([#34](https://github.com/r-near/nearc/pull/34),
+  [`efdb691`](https://github.com/r-near/nearc/commit/efdb6916633dd15b4444734204d02b98155f0723))
+
+
 ## v0.8.2 (2025-03-19)
 
 ### Bug Fixes
