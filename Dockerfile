@@ -1,5 +1,4 @@
 FROM --platform=$BUILDPLATFORM python:3.11-slim-bookworm AS base
-FROM --platform=$BUILDPLATFORM ghcr.io/astral-sh/uv:latest AS uv-source
 
 # Install required packages and Homebrew dependencies
 RUN apt-get update && apt-get install -y \
@@ -28,8 +27,8 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 # Install Emscripten using Homebrew
 RUN brew install emscripten
 
-# Install uv
-COPY --from=uv-source /uv /uvx /bin/
+# Install uv directly
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Set environment variables for Emscripten
 ENV EMSDK="$(brew --prefix emscripten)/libexec"
