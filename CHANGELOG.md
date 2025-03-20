@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.8.8 (2025-03-20)
+
+### Bug Fixes
+
+- **ci**: Install uv directly in Dockerfile
+  ([`75f971a`](https://github.com/r-near/nearc/commit/75f971a2f50f8357aec600ef570459632735a317))
+
+
 ## v0.8.7 (2025-03-20)
 
 ### Bug Fixes
