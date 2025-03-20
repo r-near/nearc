@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.8.7 (2025-03-20)
+
+### Bug Fixes
+
+- **ci**: Use correct platform image for `uv`
+  ([`3c02e28`](https://github.com/r-near/nearc/commit/3c02e28e691b77cb47d488c28f5dbe55ad6cd771))
+
+
 ## v0.8.6 (2025-03-20)
 
 ### Bug Fixes
