@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.8.5 (2025-03-19)
+
+### Bug Fixes
+
+- **ci**: Proper cross-platform Docker images
+  ([`dfa0d6b`](https://github.com/r-near/nearc/commit/dfa0d6b71877f823d674dbf2f4b0d71744247df3))
+
+
 ## v0.8.4 (2025-03-19)
 
 ### Bug Fixes
