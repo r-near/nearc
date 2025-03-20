@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.8.6 (2025-03-20)
+
+### Bug Fixes
+
+- **ci**: Ensure Docker is detected
+  ([`fb27f59`](https://github.com/r-near/nearc/commit/fb27f59e62ca5402b91b05f1c751f71b39580bb6))
+
+
 ## v0.8.5 (2025-03-19)
 
 ### Bug Fixes
