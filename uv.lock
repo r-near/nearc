@@ -338,7 +338,7 @@ wheels = [
 
 [[package]]
 name = "nearc"
-version = "0.8.1"
+version = "0.8.8"
 source = { editable = "." }
 dependencies = [
     { name = "near-abi-py" },
@@ -360,14 +360,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "near-abi-py", specifier = ">=0.4.0" },
-    { name = "pathspec", specifier = ">=0.12.1" },
-    { name = "python-semantic-release", specifier = ">=9.21.0" },
+    { name = "near-abi-py", specifier = "==0.4.0" },
+    { name = "pathspec", specifier = "==0.12.1" },
+    { name = "python-semantic-release", specifier = "==9.21.0" },
     { name = "rich", specifier = ">=13.9.4" },
-    { name = "rich-click", specifier = ">=1.8.6" },
-    { name = "tomli-w", specifier = ">=1.2.0" },
-    { name = "types-zstd", specifier = ">=1.5.6.5.20250304" },
-    { name = "zstd", specifier = ">=1.5.6.6" },
+    { name = "rich-click", specifier = "==1.8.8" },
+    { name = "tomli-w", specifier = "==1.2.0" },
+    { name = "types-zstd", specifier = "==1.5.6.6.20250306" },
+    { name = "zstd", specifier = "==1.5.6.6" },
 ]
 
 [package.metadata.requires-dev]
