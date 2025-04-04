@@ -338,7 +338,7 @@ wheels = [
 
 [[package]]
 name = "nearc"
-version = "0.8.1"
+version = "0.8.8"
 source = { editable = "." }
 dependencies = [
     { name = "near-abi-py" },
@@ -360,14 +360,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "near-abi-py", specifier = ">=0.4.0" },
-    { name = "pathspec", specifier = ">=0.12.1" },
-    { name = "python-semantic-release", specifier = ">=9.21.0" },
-    { name = "rich", specifier = ">=13.9.4" },
-    { name = "rich-click", specifier = ">=1.8.6" },
-    { name = "tomli-w", specifier = ">=1.2.0" },
+    { name = "near-abi-py", specifier = "==0.4.0" },
+    { name = "pathspec", specifier = "==0.12.1" },
+    { name = "python-semantic-release", specifier = "==9.21.0" },
+    { name = "rich", specifier = "==13.9.4" },
+    { name = "rich-click", specifier = "==1.8.8" },
+    { name = "tomli-w", specifier = "==1.2.0" },
     { name = "types-zstd", specifier = ">=1.5.6.5.20250304" },
-    { name = "zstd", specifier = ">=1.5.6.6" },
+    { name = "zstd", specifier = "==1.5.6.6" },
 ]
 
 [package.metadata.requires-dev]
@@ -699,11 +699,11 @@ wheels = [
 
 [[package]]
 name = "types-zstd"
-version = "1.5.6.6.20250306"
+version = "1.5.6.7.20250404"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a0/ea/168668205fb0e3fb7ca90195c3aa857de8b8219a7a2186f4eecc6b440b81/types_zstd-1.5.6.6.20250306.tar.gz", hash = "sha256:99ecc0132d9f5ea97d5ff629b6bbef200f57d808cfbb6c9a6facc821dab6fef0", size = 7791 }
+sdist = { url = "https://files.pythonhosted.org/packages/bd/23/624ca905392404926b1d8f91b6c7438144b3da9b7d6a69ebbe3368a156fb/types_zstd-1.5.6.7.20250404.tar.gz", hash = "sha256:d4ddb78d5a42ae05d142d5a741fbed4ff1f9b412fdbf600e4f86fa832c905cdd", size = 7804 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/78/1d/dc2c532dd4fd6669fcdb9682fff2c8d5426b0074d6fa9af454bc5eaddebe/types_zstd-1.5.6.6.20250306-py3-none-any.whl", hash = "sha256:b0fe8baf04bca5082641cf745686d7119c99ed9cef25bcd405ea5f9f2d6d1706", size = 7492 },
+    { url = "https://files.pythonhosted.org/packages/ef/e0/d5e0aafc7d1b10c737679784a0b4d0f09317482c810f362676c0de8fddbe/types_zstd-1.5.6.7.20250404-py3-none-any.whl", hash = "sha256:409045987871edd36b10e83311e36ce220ebfef7f193138734d3014fb4578ee7", size = 7460 },
 ]
 
 [[package]]
