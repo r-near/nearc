@@ -38,6 +38,33 @@ def find_contract_file() -> Optional[Path]:
     return None
 
 
+def check_reproducible_config() -> bool:
+    """
+    Check if reproducible build configuration exists in the current directory.
+
+    Returns:
+        bool: True if configuration exists, False otherwise
+    """
+    from pathlib import Path
+
+    import tomli
+
+    config_path = Path.cwd() / "pyproject.toml"
+    if not config_path.exists():
+        return False
+
+    try:
+        with open(config_path, "rb") as f:
+            config = tomli.load(f)
+
+        # Check if reproducible build configuration exists
+        return bool(
+            config.get("tool", {}).get("near", {}).get("reproducible_build", {})
+        )
+    except Exception:
+        return False
+
+
 @click.command()
 @click.argument(
     "contract", type=click.Path(exists=True, dir_okay=False), required=False
@@ -46,7 +73,9 @@ def find_contract_file() -> Optional[Path]:
 @click.option("--venv", help="Path to virtual environment", default=".venv")
 @click.option("--rebuild", is_flag=True, help="Force a clean rebuild")
 @click.option(
-    "--reproducible", is_flag=True, help="Build reproducibly in Docker container"
+    "--non-reproducible",
+    is_flag=True,
+    help="Build without reproducibility guarantees (not recommended for production)",
 )
 @click.option(
     "--init-reproducible-config",
@@ -68,7 +97,7 @@ def main(
     output: Optional[str],
     venv: str,
     rebuild: bool,
-    reproducible: bool,
+    non_reproducible: bool,
     init_reproducible_config: bool,
     single_file: bool,
     create_venv: bool,
@@ -76,6 +105,9 @@ def main(
     """Compile a Python contract to WebAssembly for NEAR blockchain.
 
     If CONTRACT is not specified, looks for __init__.py or main.py in the current directory.
+
+    By default, builds in reproducible mode for contract verification. Use --non-reproducible
+    for faster development builds when verification isn't needed.
     """
     # Handle initialization of reproducible build configuration
     if init_reproducible_config:
@@ -116,8 +148,32 @@ def main(
         output = f"{contract_path.stem}.wasm"
     output_path = Path(output).resolve()
 
-    # If reproducible flag is set, build in Docker
-    if reproducible:
+    # Check for reproducible build configuration if not in non-reproducible mode
+    if not non_reproducible:
+        has_config = check_reproducible_config()
+        if not has_config:
+            console.print(
+                "[yellow]Reproducible build configuration not found in pyproject.toml"
+            )
+            console.print(
+                "[yellow]For contract verification, it's recommended to initialize reproducible build config"
+            )
+            console.print(
+                "[cyan]Run: nearc --init-reproducible-config to set up reproducible builds"
+            )
+            console.print("[yellow]Continuing with non-reproducible build...\n")
+            non_reproducible = True
+
+    # Display warning for non-reproducible builds
+    if non_reproducible:
+        console.print(
+            "[yellow]Warning: Building in non-reproducible mode. This build cannot be verified on-chain.[/]"
+        )
+        console.print(
+            "[yellow]Use the default reproducible mode for production deployments.[/]"
+        )
+    else:
+        # Run reproducible build in Docker
         from .reproducible import run_reproducible_build
 
         # Prepare build args
@@ -127,13 +183,16 @@ def main(
         if single_file:
             build_args.append("--single-file")
 
-        # Run reproducible build in Docker
+        console.print(
+            "[green]Building in reproducible mode for contract verification[/]"
+        )
         if not run_reproducible_build(contract_path, output_path, build_args):
             console.print("[red]Failed to run reproducible build")
             sys.exit(1)
 
         sys.exit(0)
 
+    # Non-reproducible build flow:
     # Check for container environment and set up venv if needed
     in_container = is_running_in_container()
     if in_container:

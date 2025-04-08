@@ -6,11 +6,11 @@ NEARC is a specialized compiler that transforms Python smart contracts into WebA
 
 - Write NEAR smart contracts in Python
 - Use Python decorators (`@export`, `@view`, `@call`, etc.) to mark contract methods
+- Reproducible builds for contract verification
 - Automatic dependency detection and packaging
 - Optimized WebAssembly output
 - Automatic NEP-330 contract metadata compliance
-- **Reproducible builds for contract verification**
-- **Auto-detection of contract entrypoint files**
+- Auto-detection of contract entrypoint files
 
 ## Prerequisites
 
@@ -22,10 +22,24 @@ NEARC is a specialized compiler that transforms Python smart contracts into WebA
 
 ## Getting Started
 
+### Setup for Reproducible Builds (Recommended)
+
+NEARC prioritizes reproducible builds to ensure contract verification:
+
+```bash
+# Initialize reproducible build configuration (first-time setup)
+uvx nearc --init-reproducible-config
+
+# Build contract with reproducible guarantees (default)
+uvx nearc contract.py
+```
+
+### Installation
+
 NEARC is designed to be used without installation via `uvx`:
 
 ```bash
-# Use directly with uvx (recommended)
+# Use directly with uvx
 uvx nearc contract.py
 ```
 
@@ -42,7 +56,7 @@ pip install nearc
 ## Usage
 
 ```bash
-# Basic usage with explicit contract file
+# Basic usage with explicit contract file (uses reproducible builds by default)
 nearc contract.py
 
 # Auto-detect contract file (looks for __init__.py or main.py)
@@ -57,23 +71,24 @@ nearc contract.py --venv my-venv
 # Force rebuild
 nearc contract.py --rebuild
 
+# Non-reproducible build (faster for development only)
+nearc contract.py --non-reproducible
+
 # Initialize reproducible build configuration
 nearc --init-reproducible-config
-
-# Build reproducibly for contract verification
-nearc contract.py --reproducible
 ```
 
 ### Command Line Options
 
-| Option                      | Description                                                |
-|-----------------------------|------------------------------------------------------------|
-| `contract`                  | Path to contract file (optional - auto-detects if omitted) |
-| `--output`, `-o`           | Output WASM filename (default: derived from contract name) |
-| `--venv`                   | Path to virtual environment (default: `.venv`)             |
-| `--rebuild`                | Force rebuild of all components                            |
-| `--init-reproducible-config`| Initialize configuration for reproducible builds           |
-| `--reproducible`           | Build reproducibly in Docker for contract verification     |
+| Option                      | Description                                                    |
+|-----------------------------|----------------------------------------------------------------|
+| `contract`                  | Path to contract file (optional - auto-detects if omitted)     |
+| `--output`, `-o`           | Output WASM filename (default: derived from contract name)     |
+| `--venv`                   | Path to virtual environment (default: `.venv`)                 |
+| `--rebuild`                | Force rebuild of all components                                |
+| `--non-reproducible`       | Build without reproducibility guarantees (not recommended)     |
+| `--init-reproducible-config`| Initialize configuration for reproducible builds               |
+| `--single-file`            | Skip local module discovery, compile only the specified file   |
 
 ### Contract Entrypoint
 
@@ -120,16 +135,25 @@ def increment():
 
 The compiler automatically detects functions with `@near.export` and similar decorators, making them available as contract methods in the compiled WebAssembly.
 
-## Reproducible Builds and Contract Verification
+## Why Reproducible Builds Matter
 
-NEARC supports reproducible builds for contract verification, allowing users to verify that the deployed WASM matches the source code.
+Reproducible builds are essential for smart contract security and trust:
+
+1. **Contract Verification** - Allow users to verify the deployed WASM matches source code
+2. **Supply Chain Security** - Protect against compromised build environments
+3. **Auditing** - Enable third-party auditors to validate contract integrity
+4. **User Trust** - Build confidence in your dApp by enabling verification
+
+By default, NEARC uses reproducible builds to ensure your contracts can be verified on-chain.
+
+## Reproducible Builds and Contract Verification
 
 ### Setting Up Reproducible Builds
 
-1. Initialize the configuration:
+1. Initialize the configuration (if not already done):
 
 ```bash
-nearc contract.py --init-reproducible-config
+nearc --init-reproducible-config
 ```
 
 2. Update the generated configuration in `pyproject.toml` with the actual Docker image digest:
@@ -142,10 +166,10 @@ container_build_command = ["nearc"]
 
 3. Ensure your code is in a Git repository with all changes committed.
 
-4. Build reproducibly:
+4. Build your contract (reproducible by default):
 
 ```bash
-nearc contract.py --reproducible
+nearc contract.py
 ```
 
 ### Verification Process
@@ -163,6 +187,17 @@ The verification tool will:
 - Build the contract and compare it with the on-chain version
 
 For detailed information, see our [Reproducible Builds Guide](docs/reproducible-builds.md).
+
+## Development Builds
+
+For faster development iteration where contract verification isn't needed:
+
+```bash
+# Non-reproducible build (faster for development)
+nearc contract.py --non-reproducible
+```
+
+Note: Non-reproducible builds cannot be verified on-chain and should only be used during development.
 
 ## Contract Metadata (NEP-330)
 
