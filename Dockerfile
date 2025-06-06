@@ -17,6 +17,9 @@ RUN apt-get update && apt-get install -y \
     file \
     && rm -rf /var/lib/apt/lists/*
 
+# Fix gcc-11 symlink issue for Python package compilation
+RUN ln -s /usr/bin/gcc /usr/bin/gcc-11
+
 # Ensure Docker is detected
 RUN touch /.dockerenv
 
