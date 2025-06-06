@@ -3,9 +3,9 @@ name = "nearc"
 version = "0.8.8"
 description = "Python to WebAssembly compiler for NEAR smart contracts"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
-    "near-abi-py>=0.4.0",
+    "near-abi-py>=1.0.0",
     "pathspec>=0.12.1",
     "python-semantic-release>=9.21.0",
     "rich>=13.9.4",
@@ -47,3 +47,4 @@ branch = "main"
 changelog_file = "CHANGELOG.md"
 commit_message = "chore(release): {version} [build]"
 build_command = "uv build"
+allow_zero_version = true
