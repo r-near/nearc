@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM python:3.11-slim-bookworm AS base
+FROM --platform=$BUILDPLATFORM python:3.12-slim-bookworm AS base
 
 # Install required packages and Homebrew dependencies
 RUN apt-get update && apt-get install -y \
