@@ -9,8 +9,8 @@ NEARC is a specialized compiler that transforms Python smart contracts into WebA
 - Automatic dependency detection and packaging
 - Optimized WebAssembly output
 - Automatic NEP-330 contract metadata compliance
-- **Reproducible builds for contract verification**
-- **Auto-detection of contract entrypoint files**
+- Reproducible builds for contract verification
+- Auto-detection of contract entrypoint files
 
 ## Prerequisites
 

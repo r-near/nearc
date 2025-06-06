@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 import zstd
-from near_abi_py import generate_abi
+from near_abi_py import generate_abi_from_files
 
 from .utils import console
 
@@ -31,7 +31,9 @@ def inject_abi(contract_path: Path) -> Path:
     if pyproject_path.exists():
         package_path = pyproject_path
 
-    abi = generate_abi(contract_file=str(contract_path), package_path=str(package_path))
+    abi = generate_abi_from_files(
+        file_paths=[str(contract_path)], project_dir=str(package_path)
+    )
     compressed_abi = zstd.compress(json.dumps(abi).encode())
 
     # Convert the bytes to a proper Python bytes literal
