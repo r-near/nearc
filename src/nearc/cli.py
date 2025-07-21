@@ -10,7 +10,7 @@ from typing import Optional
 
 import rich_click as click
 
-from .builder import compile_contract
+from .builder import compile_contract, compile_contract_cpython
 from .utils import console, is_running_in_container, setup_venv
 
 
@@ -63,6 +63,53 @@ def find_contract_file() -> Optional[Path]:
     is_flag=True,
     help="Force setup of virtual environment before building",
 )
+@click.option(
+    "--compiler",
+    type=click.Choice(("mpy", "py")),
+    default="mpy",
+    help="Select which Python implementation to use (mpy: MicroPython, py: CPython)",
+)
+@click.option(
+    "--opt-level", "-O",
+    type=click.IntRange(0, 4),
+    default=4,
+    help="(CPython only) Optimization level (0-4)",
+)
+@click.option(
+    "--module-tracing/--no-module-tracing",
+    is_flag=True,
+    default=None,
+    help="(CPython only) Enable Python module tracing",
+)
+@click.option(
+    "--function-tracing",
+    type=click.Choice(("off", "safe", "aggressive")),
+    default=None,
+    help="(CPython only) Function tracing mode",
+)
+@click.option(
+    "--compression/--no-compression",
+    is_flag=True,
+    default=None,
+    help="(CPython only) Enable WASM data initializer compression",
+)
+@click.option(
+    "--debug-info/--no-debug-info",
+    is_flag=True,
+    default=None,
+    help="(CPython only) Include WASM debug information",
+)
+@click.option(
+    "--verify-optimized-wasm",
+    is_flag=True,
+    default=False,
+    help="(CPython only) Run/verify optimized WASM after building",
+)
+@click.option(
+    "--pinned-functions",
+    type=str,
+    help="(CPython only) Comma-separated list of function names to pin (case-sensitive)",
+)
 def main(
     contract: Optional[str],
     output: Optional[str],
@@ -72,7 +119,14 @@ def main(
     init_reproducible_config: bool,
     single_file: bool,
     create_venv: bool,
-):
+    compiler: str,
+    opt_level: int,
+    module_tracing: bool,
+    function_tracing: str,
+    compression: bool,
+    debug_info: bool,
+    verify_optimized_wasm: bool,
+    pinned_functions: str):
     """Compile a Python contract to WebAssembly for NEAR blockchain.
 
     If CONTRACT is not specified, looks for __init__.py or main.py in the current directory.
@@ -154,27 +208,49 @@ def main(
         console.print("[cyan]Or run with --create-venv to create it automatically")
         sys.exit(1)
 
-    # Check that emcc is available
-    if not shutil.which("emcc"):
-        console.print("[red]Error: Emscripten compiler (emcc) not found in PATH")
-        console.print(
-            "[cyan]Please install Emscripten: https://emscripten.org/docs/getting_started/"
-        )
-        sys.exit(1)
+    if compiler == "mpy":
+        # Check that emcc is available
+        if not shutil.which("emcc"):
+            console.print("[red]Error: Emscripten compiler (emcc) not found in PATH")
+            console.print(
+                "[cyan]Please install Emscripten: https://emscripten.org/docs/getting_started/"
+            )
+            sys.exit(1)
 
-    # Determine assets directory
-    assets_dir = Path(__file__).parent
-    if not (assets_dir / "micropython").exists():
-        console.print(
-            f"[red]Error: MicroPython assets not found at {assets_dir / 'micropython'}"
-        )
-        sys.exit(1)
+        # Determine assets directory
+        assets_dir = Path(__file__).parent
+        if not (assets_dir / "micropython").exists():
+            console.print(
+                f"[red]Error: MicroPython assets not found at {assets_dir / "micropython"}"
+            )
+            sys.exit(1)
 
-    # Compile the contract
-    if not compile_contract(
-        contract_path, output_path, venv_path, assets_dir, rebuild, single_file
-    ):
-        sys.exit(1)
+        # Compile the contract
+        if not compile_contract(
+            contract_path, output_path, venv_path, assets_dir, rebuild, single_file
+        ):
+            sys.exit(1)
+    elif compiler == "py":
+        # defaults by optimization level: [module_tracing, function_tracing, compression, debug_info]
+        defaults = {0: [False, "off", False, True], 
+                    1: [True, "off", True, True],
+                    2: [True, "safe", True, True], 
+                    3: [True, "aggressive", True, True],
+                    4: [True, "aggressive", True, False]}[opt_level]
+
+        module_tracing = defaults[0] if module_tracing is None else module_tracing
+        function_tracing = function_tracing or defaults[1]
+        compression = defaults[2] if compression is None else compression
+        debug_info = defaults[3] if debug_info is None else debug_info
+        pinned_functions = [f.strip() for f in (pinned_functions or "").split(",") if f.strip()]
+        
+        # Compile the contract
+        if not compile_contract_cpython(
+            contract_path, output_path, venv_path, rebuild, single_file, 
+            module_tracing, function_tracing, compression, debug_info, 
+            pinned_functions, verify_optimized_wasm
+        ):
+            sys.exit(1)
 
 
 if __name__ == "__main__":

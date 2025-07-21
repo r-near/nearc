@@ -13,6 +13,7 @@ dependencies = [
     "tomli-w>=1.2.0",
     "types-zstd>=1.5.6.5.20250304",
     "zstd>=1.5.6.6",
+    "cpython_near_wasm_opt>=0.8.3"
 ]
 
 [project.scripts]

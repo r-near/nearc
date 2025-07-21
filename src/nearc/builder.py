@@ -7,14 +7,15 @@ import shutil
 import sys
 from pathlib import Path
 from typing import Set
+from cpython_near_wasm_opt import optimize_wasm_file
+from near_abi_py import generate_abi_from_files
 
 from .abi import inject_abi
 from .analyzer import analyze_contract, find_imports
 from .exports import inject_contract_exports
 from .manifest import prepare_build_files
 from .metadata import inject_metadata_function
-from .utils import console, run_command_with_progress, with_progress
-
+from .utils import console, run_command_with_progress, with_progress, find_site_packages
 
 @with_progress("Building MicroPython cross-compiler")
 def build_mpy_cross(
@@ -214,4 +215,127 @@ def compile_contract(
     console.print(
         f"[bold green]Successfully compiled contract:[/] [cyan]{output_path}[/] [yellow]({size_kb:.1f} KB)[/]"
     )
+    return True
+
+
+def compile_contract_cpython(
+    contract_path: Path,
+    output_path: Path,
+    venv_path: Path,
+    rebuild: bool = False,
+    single_file: bool = False,
+    module_tracing: bool = True,
+    function_tracing: bool = True,
+    compression: bool = True,
+    debug_info: bool = True,
+    pinned_functions: list[str] = [],
+    verify_optimized_wasm: bool = True
+) -> bool:
+    """
+    Compile a NEAR contract to WebAssembly with progress display.
+
+    Args:
+        contract_path: Path to the contract file
+        output_path: Path where the output WASM should be written
+        venv_path: Path to the virtual environment
+        assets_dir: Path to the assets directory
+        rebuild: Whether to force a clean rebuild
+        single_file: Whether to skip local module discovery and compile only the specified file
+
+    Returns:
+        True if compilation succeeded, False if it failed
+    """
+    # Setup paths
+    build_dir = contract_path.parent / "build"
+
+    # Ensure build directory exists
+    if rebuild and build_dir.exists():
+        shutil.rmtree(build_dir)
+    build_dir.mkdir(exist_ok=True)
+
+    # Show a header for the compilation
+    console.print(f"[bold cyan]Compiling NEAR Contract:[/] [yellow]{contract_path}[/]")
+    if single_file:
+        console.print("[cyan]Single file mode: skipping local module discovery[/]")
+
+    # Inject exports for class-based contracts
+    contract_with_exports = inject_contract_exports(contract_path)
+
+    # Inject ABI
+    contract_with_abi = inject_abi(contract_with_exports)
+
+    # Inject metadata if needed
+    contract_with_metadata = inject_metadata_function(contract_with_abi)
+
+    # Use the potentially modified contract for compilation
+    # We'll analyze the original contract for exports and imports first to avoid confusion
+    exports, imports = analyze_contract(contract_path)
+
+    # Add any additional imports needed for metadata
+    if contract_with_metadata != contract_path:
+        metadata_imports = find_imports(contract_with_metadata)
+        imports = imports.union(metadata_imports)
+
+    # Check if pyproject.toml has pinned functions specified
+    pyproject_path = contract_path.parent / "pyproject.toml"
+    if pyproject_path.is_file():
+        try:
+            import tomllib
+
+            with open(pyproject_path, "rb") as file:
+                pyproject_data = tomllib.load(file)
+            pinned_functions.extend(
+                pyproject_data.get("tool", {})
+                .get("nearc", {})
+                .get("pinned-functions", [])
+            )
+        except Exception as e:
+            console.print(
+                f"[yellow]Warning: Could not read pinned functions from pyproject.toml: {e}"
+            )
+
+    # This is a directory where all modules destined for the compiled WASM should be stored, 
+    # including NEAR Python SDK files and any dependencies beyond the Python standard library
+    # Python source files (.py) are required since they need be compiled into version-specific .pyc file by the WASM optimizer
+    user_lib_dir=build_dir / "lib"
+    shutil.copytree(find_site_packages(venv_path), user_lib_dir, dirs_exist_ok=True)
+
+    # ABI can be utilized by the WASM optimizer to generate test cases for the module/function profiling
+    abi = generate_abi_from_files(
+        file_paths=[str(contract_path)], project_dir=str(contract_path.parent)
+    )
+    
+    # Build the WASM contract
+    optimize_wasm_file(
+        build_dir=build_dir, output_file=output_path, module_opt=module_tracing, 
+        function_opt=function_tracing, compression=compression, debug_info=debug_info,
+        pinned_functions=pinned_functions, user_lib_dir=user_lib_dir, contract_file=contract_with_metadata,
+        contract_exports=exports, verify_optimized_wasm=verify_optimized_wasm, abi=abi
+    )
+    
+    # Clean up temporary file if we created one
+    if contract_with_metadata != contract_path and contract_with_metadata.exists():
+        contract_with_metadata.unlink()
+
+    if contract_with_abi != contract_path and contract_with_abi.exists():
+        contract_with_abi.unlink()
+
+    if contract_with_exports != contract_path and contract_with_exports.exists():
+        contract_with_exports.unlink()
+
+    # Verify the output file exists
+    if not output_path.exists():
+        console.print(f"[red]Error: Output file {output_path} was not created")
+        return False
+
+    # Show success message with file size
+    size_kb = output_path.stat().st_size / 1024
+    console.print(
+        f"[bold green]Successfully compiled contract:[/] [cyan]{output_path}[/] [yellow]({size_kb:.1f} KB)[/]"
+    )
+    if size_kb >= 1536:
+        console.print(
+            "[bold red]Compiled contract size exceeds 1.5MB limit[/], you could try re-running the build with a higher "
+            "optimization level (-O[0-4]) and/or switching off the WASM debug info with --no-debug-info to reduce the size"
+        )
     return True
