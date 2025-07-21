@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "near-abi-py>=1.0.0",
+    "near-sdk-py>=0.7.1",
     "pathspec>=0.12.1",
     "python-semantic-release>=9.21.0",
     "rich>=13.9.4",
