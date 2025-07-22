@@ -243,12 +243,9 @@ def main(
         }[opt_level]
 
         module_tracing = defaults[0] if module_tracing is None else module_tracing
-        function_tracing = function_tracing or defaults[1]
+        function_tracing = function_tracing or str(defaults[1])
         compression = defaults[2] if compression is None else compression
         debug_info = defaults[3] if debug_info is None else debug_info
-        pinned_functions = [
-            f.strip() for f in (pinned_functions or "").split(",") if f.strip()
-        ]
 
         # Compile the contract
         if not compile_contract_cpython(
@@ -261,7 +258,7 @@ def main(
             function_tracing,
             compression,
             debug_info,
-            pinned_functions,
+            [f.strip() for f in (pinned_functions or "").split(",") if f.strip()],
             verify_optimized_wasm,
         ):
             sys.exit(1)
