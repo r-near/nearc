@@ -70,7 +70,8 @@ def find_contract_file() -> Optional[Path]:
     help="Select which Python implementation to use (mpy: MicroPython, py: CPython)",
 )
 @click.option(
-    "--opt-level", "-O",
+    "--opt-level",
+    "-O",
     type=click.IntRange(0, 4),
     default=4,
     help="(CPython only) Optimization level (0-4)",
@@ -126,7 +127,8 @@ def main(
     compression: bool,
     debug_info: bool,
     verify_optimized_wasm: bool,
-    pinned_functions: str):
+    pinned_functions: str,
+):
     """Compile a Python contract to WebAssembly for NEAR blockchain.
 
     If CONTRACT is not specified, looks for __init__.py or main.py in the current directory.
@@ -221,7 +223,7 @@ def main(
         assets_dir = Path(__file__).parent
         if not (assets_dir / "micropython").exists():
             console.print(
-                f"[red]Error: MicroPython assets not found at {assets_dir / "micropython"}"
+                f"[red]Error: MicroPython assets not found at {assets_dir / 'micropython'}"
             )
             sys.exit(1)
 
@@ -232,23 +234,35 @@ def main(
             sys.exit(1)
     elif compiler == "py":
         # defaults by optimization level: [module_tracing, function_tracing, compression, debug_info]
-        defaults = {0: [False, "off", False, True], 
-                    1: [True, "off", True, True],
-                    2: [True, "safe", True, True], 
-                    3: [True, "aggressive", True, True],
-                    4: [True, "aggressive", True, False]}[opt_level]
+        defaults = {
+            0: [False, "off", False, True],
+            1: [True, "off", True, True],
+            2: [True, "safe", True, True],
+            3: [True, "aggressive", True, True],
+            4: [True, "aggressive", True, False],
+        }[opt_level]
 
         module_tracing = defaults[0] if module_tracing is None else module_tracing
         function_tracing = function_tracing or defaults[1]
         compression = defaults[2] if compression is None else compression
         debug_info = defaults[3] if debug_info is None else debug_info
-        pinned_functions = [f.strip() for f in (pinned_functions or "").split(",") if f.strip()]
-        
+        pinned_functions = [
+            f.strip() for f in (pinned_functions or "").split(",") if f.strip()
+        ]
+
         # Compile the contract
         if not compile_contract_cpython(
-            contract_path, output_path, venv_path, rebuild, single_file, 
-            module_tracing, function_tracing, compression, debug_info, 
-            pinned_functions, verify_optimized_wasm
+            contract_path,
+            output_path,
+            venv_path,
+            rebuild,
+            single_file,
+            module_tracing,
+            function_tracing,
+            compression,
+            debug_info,
+            pinned_functions,
+            verify_optimized_wasm,
         ):
             sys.exit(1)
 

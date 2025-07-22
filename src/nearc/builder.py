@@ -7,6 +7,7 @@ import shutil
 import sys
 from pathlib import Path
 from typing import Set
+
 from cpython_near_wasm_opt import optimize_wasm_file
 from near_abi_py import generate_abi_from_files
 
@@ -15,7 +16,8 @@ from .analyzer import analyze_contract, find_imports
 from .exports import inject_contract_exports
 from .manifest import prepare_build_files
 from .metadata import inject_metadata_function
-from .utils import console, run_command_with_progress, with_progress, find_site_packages
+from .utils import console, find_site_packages, run_command_with_progress, with_progress
+
 
 @with_progress("Building MicroPython cross-compiler")
 def build_mpy_cross(
@@ -229,7 +231,7 @@ def compile_contract_cpython(
     compression: bool = True,
     debug_info: bool = True,
     pinned_functions: list[str] = [],
-    verify_optimized_wasm: bool = True
+    verify_optimized_wasm: bool = True,
 ) -> bool:
     """
     Compile a NEAR contract to WebAssembly with progress display.
@@ -294,25 +296,33 @@ def compile_contract_cpython(
                 f"[yellow]Warning: Could not read pinned functions from pyproject.toml: {e}"
             )
 
-    # This is a directory where all modules destined for the compiled WASM should be stored, 
+    # This is a directory where all modules destined for the compiled WASM should be stored,
     # including NEAR Python SDK files and any dependencies beyond the Python standard library
     # Python source files (.py) are required since they need be compiled into version-specific .pyc file by the WASM optimizer
-    user_lib_dir=build_dir / "lib"
+    user_lib_dir = build_dir / "lib"
     shutil.copytree(find_site_packages(venv_path), user_lib_dir, dirs_exist_ok=True)
 
     # ABI can be utilized by the WASM optimizer to generate test cases for the module/function profiling
     abi = generate_abi_from_files(
         file_paths=[str(contract_path)], project_dir=str(contract_path.parent)
     )
-    
+
     # Build the WASM contract
     optimize_wasm_file(
-        build_dir=build_dir, output_file=output_path, module_opt=module_tracing, 
-        function_opt=function_tracing, compression=compression, debug_info=debug_info,
-        pinned_functions=pinned_functions, user_lib_dir=user_lib_dir, contract_file=contract_with_metadata,
-        contract_exports=exports, verify_optimized_wasm=verify_optimized_wasm, abi=abi
+        build_dir=build_dir,
+        output_file=output_path,
+        module_opt=module_tracing,
+        function_opt=function_tracing,
+        compression=compression,
+        debug_info=debug_info,
+        pinned_functions=pinned_functions,
+        user_lib_dir=user_lib_dir,
+        contract_file=contract_with_metadata,
+        contract_exports=exports,
+        verify_optimized_wasm=verify_optimized_wasm,
+        abi=abi,
     )
-    
+
     # Clean up temporary file if we created one
     if contract_with_metadata != contract_path and contract_with_metadata.exists():
         contract_with_metadata.unlink()
