@@ -72,9 +72,9 @@ def find_contract_file() -> Optional[Path]:
 @click.option(
     "--opt-level",
     "-O",
-    type=click.IntRange(0, 4),
+    type=click.IntRange(0, 5),
     default=4,
-    help="(CPython only) Optimization level (0-4)",
+    help="(CPython only) Optimization level (0-5)",
 )
 @click.option(
     "--module-tracing/--no-module-tracing",
@@ -237,9 +237,10 @@ def main(
         defaults = {
             0: [False, "off", False, True],
             1: [True, "off", True, True],
-            2: [True, "safe", True, True],
-            3: [True, "aggressive", True, True],
-            4: [True, "aggressive", True, False],
+            2: [True, "safest", True, True],
+            3: [True, "safe", True, True],
+            4: [True, "aggressive", True, True],
+            5: [True, "aggressive", True, False],
         }[opt_level]
 
         module_tracing = defaults[0] if module_tracing is None else module_tracing

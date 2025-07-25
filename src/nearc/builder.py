@@ -227,7 +227,7 @@ def compile_contract_cpython(
     rebuild: bool = False,
     single_file: bool = False,
     module_tracing: bool = True,
-    function_tracing: str = "safe",
+    function_tracing: str = "safe",  # valid values: "aggressive", "safe", "safest", "off"
     compression: bool = True,
     debug_info: bool = True,
     pinned_functions: list[str] = [],
