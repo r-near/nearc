@@ -84,7 +84,7 @@ def find_contract_file() -> Optional[Path]:
 )
 @click.option(
     "--function-tracing",
-    type=click.Choice(("off", "safe", "aggressive")),
+    type=click.Choice(("off", "safest", "safe", "aggressive")),
     default=None,
     help="(CPython only) Function tracing mode",
 )

@@ -1,6 +1,6 @@
 # NEARC - NEAR Python Contract Compiler
 
-NEARC is a specialized compiler that transforms Python smart contracts into WebAssembly bytecode for deployment on the NEAR blockchain. It allows developers to write smart contracts in Python rather than Rust or AssemblyScript, leveraging MicroPython as the underlying runtime.
+NEARC is a specialized compiler that transforms Python smart contracts into WebAssembly bytecode for deployment on the NEAR blockchain. It allows developers to write smart contracts in Python rather than Rust or AssemblyScript, leveraging MicroPython or CPython as the underlying runtime.
 
 ## Features
 
@@ -15,7 +15,7 @@ NEARC is a specialized compiler that transforms Python smart contracts into WebA
 ## Prerequisites
 
 - Python 3.11 or newer
-- [Emscripten](https://emscripten.org/docs/getting_started/) (emcc must be in PATH)
+- [Emscripten](https://emscripten.org/docs/getting_started/) (emcc must be in PATH) (when MicroPython runtime is selected)
 - [uv](https://github.com/astral-sh/uv) for Python package management
 - [Docker](https://docs.docker.com/get-docker/) (for reproducible builds)
 - [Git](https://git-scm.com/downloads) (for reproducible builds)
@@ -62,6 +62,12 @@ nearc --init-reproducible-config
 
 # Build reproducibly for contract verification
 nearc contract.py --reproducible
+
+# Select MicroPython compiler/runtime (smaller WASM file sizes; default)
+nearc contract.py --compiler=mpy
+
+# Select CPython compiler/runtime (better compatibility, potentially larger WASM file sizes)
+nearc contract.py --compiler=py
 ```
 
 ### Command Line Options
@@ -69,11 +75,19 @@ nearc contract.py --reproducible
 | Option                      | Description                                                |
 |-----------------------------|------------------------------------------------------------|
 | `contract`                  | Path to contract file (optional - auto-detects if omitted) |
-| `--output`, `-o`           | Output WASM filename (default: derived from contract name) |
-| `--venv`                   | Path to virtual environment (default: `.venv`)             |
-| `--rebuild`                | Force rebuild of all components                            |
+| `--output`, `-o`            | Output WASM filename (default: derived from contract name) |
+| `--venv`                    | Path to virtual environment (default: `.venv`)             |
+| `--rebuild`                 | Force rebuild of all components                            |
 | `--init-reproducible-config`| Initialize configuration for reproducible builds           |
-| `--reproducible`           | Build reproducibly in Docker for contract verification     |
+| `--reproducible`            | Build reproducibly in Docker for contract verification     |
+| `--compiler=mpy/py`         | Select MicroPython (`--compiler=mpy`) or CPython (`--compiler=py`) compiler/runtime. MicroPython is the default for now  |
+| `--opt-level=n`, `-On`      | `(CPython only)` Optimization level (0-5), -O5 results in smallest WASM file sizes |
+| `--module-tracing`, `--no-module-tracing` | `(CPython only)` Enable Python module tracing (enabled by default) |
+| `--function-tracing=off/safest/safe/aggressive` | `(CPython only)` Function tracing mode |
+| `--compression`, `--no-compression` | `(CPython only)` Enable WASM data initializer compression |
+| `--debug-info`, `--no-debug-info` | `(CPython only)` Include WASM debug information |
+| `--verify-optimized-wasm` | `(CPython only)` Run/verify optimized WASM after building |
+| `--pinned-functions` | `(CPython only)` Comma-separated list of function names to pin (case-sensitive) |
 
 ### Contract Entrypoint
 
@@ -232,9 +246,9 @@ NEARC compiles Python smart contracts to WebAssembly through these steps:
 
 1. **Code Analysis** - Identifies exported functions and dependencies in the Python code
 2. **Metadata Injection** - Adds NEP-330 metadata if not already present
-3. **Manifest Generation** - Creates a MicroPython manifest file that includes all necessary modules
-4. **Export Wrapping** - Generates C wrappers for exported functions
-5. **WebAssembly Compilation** - Uses MicroPython and Emscripten to compile to WebAssembly
+3. **Manifest Generation** - Creates a MicroPython manifest file that includes all necessary modules (MicroPython backend only)
+4. **Export Wrapping** - Generates C wrappers for exported functions (MicroPython backend only)
+5. **WebAssembly Compilation** - Uses MicroPython and Emscripten to compile to WebAssembly (MicroPython backend only)
 6. **Optimization** - Produces a compact WASM file ready for blockchain deployment
 
 The compiler handles dependency resolution automatically, making it easy to use Python libraries in your contracts (as long as they're compatible with MicroPython).
@@ -259,13 +273,22 @@ uv pip install -e '.[dev]'
 
 ## Technical Details
 
-### MicroPython Integration
+### MicroPython backend
 
-NEARC uses a customized version of MicroPython as its runtime environment:
+NEARC can use a customized version of MicroPython as its runtime environment:
 
 - Focused on minimal memory footprint and efficient execution
 - Includes NEAR-specific host function bindings
 - Provides a Python standard library subset optimized for smart contracts
+
+### CPython backend
+
+NEARC can use a customized version of CPython as its runtime environment:
+
+- Provides a more compatible CPython-derived runtime at the cost of slightly larger WASM file sizes and startup gas costs
+- Includes NEAR-specific host function bindings
+- Provides most of the CPython standard library except parts which are not relevant to the WASM/NEAR runtime environment
+- Supports various WASM file size optimization strategies which allow balancing WASM file size/startup gas costs/runtime safety
 
 ### Support for External Dependencies
 
@@ -277,10 +300,10 @@ The compiler can include Python packages from your virtual environment:
 
 ## Limitations
 
-- Only supports MicroPython-compatible Python code
-- Not all Python standard library modules are available
+- MicroPython backend only supports MicroPython-compatible Python code
+- MicroPython backend doesn't have all Python standard library modules available
 - No support for async/await syntax
-- Limited compatibility with existing Python packages
+- MicroPython backend has limited compatibility with existing Python packages
 - Contract size limitations (though generally sufficient for most use cases)
 
 ## Contributing
