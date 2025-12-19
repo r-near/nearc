@@ -53,8 +53,10 @@ def build_mpy_cross(
     # Only reach here if we need to build
     mpy_cross_build_dir.mkdir(exist_ok=True)
 
+    # Use CFLAGS_EXTRA=-Wno-error to allow warnings on newer compilers
     if not run_command_with_progress(
-        ["make", "-C", str(mpy_cross_dir), f"BUILD={mpy_cross_build_dir}"],
+        ["make", "-C", str(mpy_cross_dir),
+         f"BUILD={mpy_cross_build_dir}", "CFLAGS_EXTRA=-Wno-error"],
         track_task_id=task_id,
         progress=progress,
         description="Building MicroPython cross-compiler",
